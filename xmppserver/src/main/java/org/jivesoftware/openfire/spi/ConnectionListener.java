@@ -214,14 +214,14 @@ public class ConnectionListener
         }
 
         Log.debug( "Starting..." );
-        if ( getType() == ConnectionType.SOCKET_S2S )
-        {
-            connectionAcceptor = new LegacyConnectionAcceptor( generateConnectionConfiguration() );
-        }
-        else
-        {
+//        if ( getType() == ConnectionType.SOCKET_S2S )
+//        {
+//            connectionAcceptor = new LegacyConnectionAcceptor( generateConnectionConfiguration() );
+//        }
+//        else
+//        {
             connectionAcceptor = new MINAConnectionAcceptor( generateConnectionConfiguration() );
-        }
+//        }
 
         connectionAcceptor.start();
         Log.info( "Started." );
