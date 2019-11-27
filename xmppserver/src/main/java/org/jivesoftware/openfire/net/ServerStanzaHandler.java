@@ -17,6 +17,7 @@
 package org.jivesoftware.openfire.net;
 
 import org.dom4j.Element;
+import org.dom4j.io.XMPPPacketReader;
 import org.jivesoftware.openfire.Connection;
 import org.jivesoftware.openfire.PacketRouter;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
@@ -25,13 +26,17 @@ import org.jivesoftware.openfire.session.LocalIncomingServerSession;
 import org.jivesoftware.util.JiveGlobals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xmlpull.mxp1.MXParserFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmpp.packet.IQ;
 import org.xmpp.packet.Message;
 import org.xmpp.packet.Packet;
 import org.xmpp.packet.Presence;
 import org.xmpp.packet.StreamError;
+
+import java.io.IOException;
 
 /**
  * Handler of XML stanzas sent by remote servers. Remote servers that send stanzas
@@ -99,11 +104,18 @@ public class ServerStanzaHandler extends StanzaHandler {
     boolean createSession(String namespace, String serverName, XmlPullParser xpp, Connection connection)
             throws XmlPullParserException {
         // TODO Finish implementation
-        /*if ("jabber:server".equals(namespace)) {
+        if ("jabber:server".equals(namespace)) {
             // The connected client is a server so create an IncomingServerSession
-            session = LocalIncomingServerSession.createSession(serverName, reader, connection);
+            XMPPPacketReader reader = new XMPPPacketReader();
+            reader.setXPPFactory(XmlPullParserFactory.newInstance(MXParser.class.getName(), null));
+            try {
+                session = LocalIncomingServerSession.createSession(serverName, reader, connection, /* TODO */ true);
+            } catch (final IOException ioex) {
+                Log.error("Failed to create server session", ioex);
+                return false;
+            }
             return true;
-        }*/
+        }
         return false;
     }
 
