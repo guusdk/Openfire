@@ -106,7 +106,7 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
      * @throws java.io.IOException if an input/output error occurs while using the connection.
      */
     public static LocalIncomingServerSession createSession(String serverName, XMPPPacketReader reader,
-            SocketConnection connection, boolean directTLS) throws XmlPullParserException, IOException {
+            Connection connection, boolean directTLS) throws XmlPullParserException, IOException {
         XmlPullParser xpp = reader.getXPPParser();
                 
         String version = xpp.getAttributeValue("", "version");

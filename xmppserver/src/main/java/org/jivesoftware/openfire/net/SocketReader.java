@@ -76,7 +76,7 @@ public abstract class SocketReader implements Runnable {
     /**
      * Reference to the physical connection.
      */
-    protected SocketConnection connection;
+    protected Connection connection;
     /**
      * Server name for which we are attending clients.
      */
