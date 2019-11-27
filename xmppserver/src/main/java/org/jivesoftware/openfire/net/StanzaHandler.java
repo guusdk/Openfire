@@ -110,6 +110,7 @@ public abstract class StanzaHandler {
     }
 
     public void process(String stanza, XMPPPacketReader reader) throws Exception {
+        Log.debug("{}::process() called for Stanza:\n {}\n", this.getClass().getSimpleName(), stanza);
         boolean initialStream = stanza.startsWith("<stream:stream") || stanza.startsWith("<flash:stream");
         if (!sessionCreated || initialStream) {
             if (!initialStream) {
