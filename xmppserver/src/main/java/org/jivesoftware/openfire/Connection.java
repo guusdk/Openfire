@@ -16,15 +16,14 @@
 
 package org.jivesoftware.openfire;
 
-import java.io.Closeable;
-import java.net.UnknownHostException;
-import java.security.cert.Certificate;
-
 import org.jivesoftware.openfire.auth.UnauthorizedException;
-import org.jivesoftware.openfire.net.StanzaHandler;
 import org.jivesoftware.openfire.session.LocalSession;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
 import org.xmpp.packet.Packet;
+
+import java.io.Closeable;
+import java.net.UnknownHostException;
+import java.security.cert.Certificate;
 
 /**
  * Represents a connection on the server.
@@ -370,7 +369,11 @@ public interface Connection extends Closeable {
      * @return The desired configuration for the connection (never null).
      */
     ConnectionConfiguration getConfiguration();
-
+    
+    default SessionInfo getSessionInfo() {
+        return new SessionInfo(null);
+    }
+    
     /**
      * Enumeration of possible compression policies required to interact with the server.
      */

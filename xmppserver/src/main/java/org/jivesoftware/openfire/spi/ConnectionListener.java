@@ -6,7 +6,6 @@ import org.jivesoftware.openfire.ServerPort;
 import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.keystore.CertificateStoreConfiguration;
 import org.jivesoftware.openfire.keystore.IdentityStore;
-import org.jivesoftware.openfire.net.SocketConnection;
 import org.jivesoftware.util.CertificateManager;
 import org.jivesoftware.util.JiveGlobals;
 import org.slf4j.Logger;
@@ -550,7 +549,7 @@ public class ConnectionListener
      *
      * @param policy an encryption policy (not null).
      */
-    public void setTLSPolicy( SocketConnection.TLSPolicy policy )
+    public void setTLSPolicy( Connection.TLSPolicy policy )
     {
         final Connection.TLSPolicy oldPolicy = getTLSPolicy();
         if ( oldPolicy.equals( policy ) )

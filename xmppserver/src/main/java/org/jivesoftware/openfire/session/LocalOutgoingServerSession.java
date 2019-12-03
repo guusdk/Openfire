@@ -16,6 +16,13 @@
 
 package org.jivesoftware.openfire.session;
 
+import com.google.common.collect.ImmutableSet;
+import org.apache.mina.core.future.ConnectFuture;
+import org.apache.mina.core.future.IoFuture;
+import org.apache.mina.core.future.IoFutureListener;
+import org.apache.mina.core.service.IoHandlerAdapter;
+import org.apache.mina.core.session.IoSession;
+import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.XMPPPacketReader;
@@ -24,12 +31,14 @@ import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.event.ServerSessionEventDispatcher;
 import org.jivesoftware.openfire.net.MXParser;
 import org.jivesoftware.openfire.net.SASLAuthentication;
-import org.jivesoftware.openfire.net.SocketConnection;
 import org.jivesoftware.openfire.net.SocketUtil;
+import org.jivesoftware.openfire.nio.NIOConnection;
 import org.jivesoftware.openfire.server.OutgoingServerSocketReader;
 import org.jivesoftware.openfire.server.RemoteServerManager;
 import org.jivesoftware.openfire.server.ServerDialback;
 import org.jivesoftware.openfire.spi.BasicStreamIDFactory;
+import org.jivesoftware.openfire.spi.ConnectionConfiguration;
+import org.jivesoftware.openfire.spi.ConnectionType;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.StringUtils;
 import org.slf4j.Logger;
@@ -256,69 +265,101 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
         Socket socket = socketToXmppDomain.getKey();
         boolean directTLS = socketToXmppDomain.getValue();
 
-        SocketConnection connection = null;
+        Connection connection = null;
         try {
             final SocketAddress socketAddress = socket.getRemoteSocketAddress();
             log.debug( "Opening a new connection to {} {}.", socketAddress, directTLS ? "using directTLS" : "that is initially not encrypted" );
-            connection = new SocketConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
-            if (directTLS) {
-                try {
-                    connection.startTLS( true, true );
-                } catch ( SSLException ex ) {
-                    if ( JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ON_PLAIN_DETECTION_ALLOW_NONDIRECTTLS_FALLBACK, true) && ex.getMessage().contains( "plaintext connection?" ) ) {
-                        Log.warn( "Plaintext detected on a new connection that is was started in DirectTLS mode (socket address: {}). Attempting to restart the connection in non-DirectTLS mode.", socketAddress );
-                        try {
-                            // Close old socket
-                            socket.close();
-                        } catch ( Exception e ) {
-                            Log.debug( "An exception occurred (and is ignored) while trying to close a socket that was already in an error state.", e );
-                        }
-                        socket = new Socket();
-                        socket.connect( socketAddress, RemoteServerManager.getSocketTimeout() );
-                        connection = new SocketConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
-                        directTLS = false;
-                        Log.info( "Re-established connection to {}. Proceeding without directTLS.", socketAddress );
-                    } else {
-                        // Do not retry as non-DirectTLS, rethrow the exception.
-                        throw ex;
+            
+            NioSocketConnector socketConnector = new NioSocketConnector();
+            socketConnector.setHandler(new IoHandlerAdapter() {
+                @Override
+                public void sessionOpened(IoSession session) throws Exception {
+                    
+                   Connection c = new NIOConnection(session, XMPPServer.getInstance().getPacketDeliverer(),  getConnectionConfiguration());
+                    try {
+                        c.startTLS(true, true);
+                    } catch (SSLException sslex) {
+                        // TODO
                     }
+                    log.debug( "Send the stream header and wait for response..." );
+                    String openingStream = "<stream:stream" +
+                        " xmlns:db=\"jabber:server:dialback\"" +
+                        " xmlns:stream=\"http://etherx.jabber.org/streams\"" +
+                        " xmlns=\"jabber:server\"" +
+                        " from=\"" + localDomain + "\"" + // OF-673
+                        " to=\"" + remoteDomain + "\"" +
+                        " version=\"1.0\">";
+                    c.deliverRawText(openingStream);
+
+                    // Set a read timeout (of 5 seconds) so we don't keep waiting forever
+                    int soTimeout = socket.getSoTimeout();
+                    socket.setSoTimeout(5000);
+
+                    XMPPPacketReader reader = new XMPPPacketReader();
+
+//                    final InputStream inputStream;
+//                    if (directTLS) {
+//                        inputStream = connection.getTLSStreamHandler().getInputStream();
+//                    } else {
+//                        inputStream = socket.getInputStream();
+//                    }
+                    
+                    session.read().addListener()
+
+                        reader.getXPPParser().setInput(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+
+                    // Get the answer from the Receiving Server
+                    XmlPullParser xpp = reader.getXPPParser();
+                    for (int eventType = xpp.getEventType(); eventType != XmlPullParser.START_TAG;) {
+                        eventType = xpp.next();
+                    }
+
+                    String serverVersion = xpp.getAttributeValue("", "version");
+                    String id = xpp.getAttributeValue("", "id");
+                    log.debug( "Got a response (stream ID: {}, version: {}). Check if the remote server is XMPP 1.0 compliant...", id, serverVersion );
                 }
-            }
 
-            log.debug( "Send the stream header and wait for response..." );
-            StringBuilder openingStream = new StringBuilder();
-            openingStream.append("<stream:stream");
-            openingStream.append(" xmlns:db=\"jabber:server:dialback\"");
-            openingStream.append(" xmlns:stream=\"http://etherx.jabber.org/streams\"");
-            openingStream.append(" xmlns=\"jabber:server\"");
-            openingStream.append(" from=\"").append(localDomain).append("\""); // OF-673
-            openingStream.append(" to=\"").append(remoteDomain).append("\"");
-            openingStream.append(" version=\"1.0\">");
-            connection.deliverRawText(openingStream.toString());
+                @Override
+                public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
+                    Log.error("Error", cause);
+                }
 
-            // Set a read timeout (of 5 seconds) so we don't keep waiting forever
-            int soTimeout = socket.getSoTimeout();
-            socket.setSoTimeout(5000);
+                @Override
+                public void messageReceived(IoSession session, Object message) throws Exception {
+                    super.messageReceived(session, message);
+                }
+            });
+            ConnectFuture connectFuture = socketConnector.connect(socketAddress);
+            
+            
+//            connection = new NIOConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
+//            if (directTLS) {
+//                try {
+//                    connection.startTLS( true, true );
+//                } catch ( SSLException ex ) {
+//                    if ( JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ON_PLAIN_DETECTION_ALLOW_NONDIRECTTLS_FALLBACK, true) && ex.getMessage().contains( "plaintext connection?" ) ) {
+//                        Log.warn( "Plaintext detected on a new connection that is was started in DirectTLS mode (socket address: {}). Attempting to restart the connection in non-DirectTLS mode.", socketAddress );
+//                        try {
+//                            // Close old socket
+//                            socket.close();
+//                        } catch ( Exception e ) {
+//                            Log.debug( "An exception occurred (and is ignored) while trying to close a socket that was already in an error state.", e );
+//                        }
+//                        socket = new Socket();
+//                        socket.connect( socketAddress, RemoteServerManager.getSocketTimeout() );
+//                        connection = new SocketConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
+//                        directTLS = false;
+//                        Log.info( "Re-established connection to {}. Proceeding without directTLS.", socketAddress );
+//                    } else {
+//                        // Do not retry as non-DirectTLS, rethrow the exception.
+//                        throw ex;
+//                    }
+//                }
+//            }
 
-            XMPPPacketReader reader = new XMPPPacketReader();
+            
 
-            final InputStream inputStream;
-            if (directTLS) {
-                inputStream = connection.getTLSStreamHandler().getInputStream();
-            } else {
-                inputStream = socket.getInputStream();
-            }
-            reader.getXPPParser().setInput(new InputStreamReader( inputStream, StandardCharsets.UTF_8 ));
-
-            // Get the answer from the Receiving Server
-            XmlPullParser xpp = reader.getXPPParser();
-            for (int eventType = xpp.getEventType(); eventType != XmlPullParser.START_TAG;) {
-                eventType = xpp.next();
-            }
-
-            String serverVersion = xpp.getAttributeValue("", "version");
-            String id = xpp.getAttributeValue("", "id");
-            log.debug( "Got a response (stream ID: {}, version: {}). Check if the remote server is XMPP 1.0 compliant...", id, serverVersion );
+            
 
             if (serverVersion != null && decodeVersion(serverVersion)[0] >= 1) {
                 log.debug( "The remote server is XMPP 1.0 compliant (or at least reports to be)." );
@@ -437,8 +478,34 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
             return null;
         }
     }
+    
+    private static ConnectionConfiguration getConnectionConfiguration()  {
+        try {
+            return new ConnectionConfiguration(
+                ConnectionType.SOCKET_S2S,
+                true,
+                4,
+                2048, 
+                null,
+                null,
+                -1,
+                Connection.TLSPolicy.optional,
+                XMPPServer.getInstance().getCertificateStoreManager().getIdentityStoreConfiguration(ConnectionType.SOCKET_S2S),
+                XMPPServer.getInstance().getCertificateStoreManager().getTrustStoreConfiguration(ConnectionType.SOCKET_S2S),
+                true,
+                true,
+                ImmutableSet.of(),
+                ImmutableSet.of(),
+                null
+            );
+        } catch (IOException ioex) {
+            //TODO
+            Log.error("Bad", ioex);
+            throw new RuntimeException(ioex);
+        }
+    }
 
-    private static LocalOutgoingServerSession secureAndAuthenticate(String remoteDomain, SocketConnection connection, XMPPPacketReader reader, StringBuilder openingStream, String localDomain) throws Exception {
+    private static LocalOutgoingServerSession secureAndAuthenticate(String remoteDomain, Connection connection, XMPPPacketReader reader, StringBuilder openingStream, String localDomain) throws Exception {
         final Logger log = LoggerFactory.getLogger(Log.getName() + "[Secure connection for: " + localDomain + " to: " + remoteDomain + "]" );
         Element features;
 
@@ -499,7 +566,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
     }
 
     private static LocalOutgoingServerSession authenticate( final String remoteDomain,
-                                                            final SocketConnection connection,
+                                                            final Connection connection,
                                                             final XMPPPacketReader reader,
                                                             final StringBuilder openingStream,
                                                             final String localDomain,
@@ -586,7 +653,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
         }    	
     }
     
-    private static LocalOutgoingServerSession attemptSASLexternal(SocketConnection connection, MXParser xpp, XMPPPacketReader reader, String localDomain, String remoteDomain, String id, StringBuilder openingStream) throws DocumentException, IOException, XmlPullParserException {
+    private static LocalOutgoingServerSession attemptSASLexternal(Connection connection, MXParser xpp, XMPPPacketReader reader, String localDomain, String remoteDomain, String id, StringBuilder openingStream) throws DocumentException, IOException, XmlPullParserException {
         final Logger log = LoggerFactory.getLogger( Log.getName() + "[EXTERNAL SASL for: " + localDomain + " to: " + remoteDomain + " (Stream ID: " + id + ")]" );
 
         log.debug("Starting EXTERNAL SASL.");
@@ -621,7 +688,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
         }  	
     }
     
-    private static boolean doExternalAuthentication(String localDomain, SocketConnection connection,
+    private static boolean doExternalAuthentication(String localDomain, Connection connection,
             XMPPPacketReader reader) throws DocumentException, IOException, XmlPullParserException {
 
         StringBuilder sb = new StringBuilder();

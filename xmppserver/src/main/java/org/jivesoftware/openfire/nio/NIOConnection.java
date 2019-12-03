@@ -28,12 +28,10 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 import javax.net.ssl.*;
 
@@ -45,8 +43,10 @@ import org.apache.mina.filter.ssl.SslFilter;
 import org.jivesoftware.openfire.Connection;
 import org.jivesoftware.openfire.ConnectionCloseListener;
 import org.jivesoftware.openfire.PacketDeliverer;
+import org.jivesoftware.openfire.SessionInfo;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.net.StanzaHandler;
+import org.jivesoftware.openfire.net.TLSStreamHandler;
 import org.jivesoftware.openfire.session.LocalSession;
 import org.jivesoftware.openfire.session.Session;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
@@ -468,6 +468,15 @@ public class NIOConnection implements Connection {
     @Override
     public String toString() {
         return super.toString() + " MINA Session: " + ioSession;
+    }
+
+    @Override
+    public SessionInfo getSessionInfo() {
+        return new SessionInfo(Optional.ofNullable(ioSession.getFilterChain().get(TLS_FILTER_NAME))
+            .map(f -> (SslFilter)f)
+            .flatMap(f -> Optional.ofNullable(f.getSslSession(ioSession)))
+            .map(SSLSession::getCipherSuite)
+            .orElse(null));
     }
 
     private static class ThreadLocalEncoder extends ThreadLocal<CharsetEncoder> {

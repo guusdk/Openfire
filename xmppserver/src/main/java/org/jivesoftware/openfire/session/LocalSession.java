@@ -32,7 +32,6 @@ import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.interceptor.InterceptorManager;
 import org.jivesoftware.openfire.interceptor.PacketRejectedException;
-import org.jivesoftware.openfire.net.SocketConnection;
 import org.jivesoftware.openfire.net.TLSStreamHandler;
 import org.jivesoftware.openfire.streammanagement.StreamManager;
 import org.jivesoftware.util.LocaleUtils;
@@ -525,17 +524,7 @@ public abstract class LocalSession implements Session {
      */
     @Override
     public String getCipherSuiteName() {
-        SocketConnection s = (SocketConnection)getConnection();
-        if (s != null) {
-            TLSStreamHandler t = s.getTLSStreamHandler();
-            if (t != null) {
-                SSLSession ssl = t.getSSLSession();
-                if (ssl != null) {
-                    return ssl.getCipherSuite();
-                }
-            }
-        }
-        return "NONE";
+        return getConnection().getSessionInfo().getSslCipherName().orElse("NONE");
     }
 
     @Override

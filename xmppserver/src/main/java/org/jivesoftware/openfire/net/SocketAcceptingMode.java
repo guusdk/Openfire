@@ -76,16 +76,16 @@ abstract class SocketAcceptingMode {
         }
     }
 
-    public SocketReader createServerSocketReader(Socket sock, boolean isSecure, boolean useBlockingMode) throws IOException {
-        final XMPPServer server = XMPPServer.getInstance();
-        final String serverName = server.getServerInfo().getXMPPDomain();
-        final PacketRouter router = server.getPacketRouter();
-        final RoutingTable routingTable = server.getRoutingTable();
-        final PacketDeliverer deliverer = server.getPacketDeliverer();
-        final SocketConnection conn = new SocketConnection(deliverer, sock, isSecure);
-        if (directTLS) {
-            conn.startTLS( false, directTLS );
-        }
-        return new ServerSocketReader(router, routingTable, serverName, sock, conn, useBlockingMode, directTLS);
-    }
+//    public SocketReader createServerSocketReader(Socket sock, boolean isSecure, boolean useBlockingMode) throws IOException {
+//        final XMPPServer server = XMPPServer.getInstance();
+//        final String serverName = server.getServerInfo().getXMPPDomain();
+//        final PacketRouter router = server.getPacketRouter();
+//        final RoutingTable routingTable = server.getRoutingTable();
+//        final PacketDeliverer deliverer = server.getPacketDeliverer();
+//        final SocketConnection conn = new SocketConnection(deliverer, sock, isSecure);
+//        if (directTLS) {
+//            conn.startTLS( false, directTLS );
+//        }
+//        return new ServerSocketReader(router, routingTable, serverName, sock, conn, useBlockingMode, directTLS);
+//    }
 }
