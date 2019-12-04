@@ -22,6 +22,7 @@ import org.apache.mina.core.future.IoFuture;
 import org.apache.mina.core.future.IoFutureListener;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
+import org.apache.mina.filter.executor.ExecutorFilter;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -38,6 +39,7 @@ import org.jivesoftware.openfire.server.RemoteServerManager;
 import org.jivesoftware.openfire.server.ServerDialback;
 import org.jivesoftware.openfire.spi.BasicStreamIDFactory;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
+import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
 import org.jivesoftware.openfire.spi.ConnectionType;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.StringUtils;
@@ -59,6 +61,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -271,6 +274,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
             log.debug("Opening a new connection to {} {}.", socketAddress, directTLS ? "using directTLS" : "that is initially not encrypted");
 
             NioSocketConnector socketConnector = new NioSocketConnector();
+            socketConnector.getFilterChain().addFirst(ConnectionManagerImpl.EXECUTOR_FILTER_NAME, 
+                new ExecutorFilter(2, 4, 60, TimeUnit.SECONDS));
             socketConnector.setHandler(new IoHandlerAdapter() {
                 @Override
                 public void sessionOpened(IoSession session) throws Exception {
