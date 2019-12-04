@@ -489,7 +489,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 true,
                 4,
                 2048, 
-                null,
+                Connection.ClientAuth.wanted,
                 null,
                 -1,
                 Connection.TLSPolicy.optional,
