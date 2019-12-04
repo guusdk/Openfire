@@ -214,7 +214,7 @@ public class ServerDialback {
 
             final Socket socket = socketToXmppDomain.getKey();
             final boolean directTLS = socketToXmppDomain.getValue();
-            connection = new SocketConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
+// TODO            connection = new SocketConnection(XMPPServer.getInstance().getPacketDeliverer(), socket, false);
             if (directTLS) {
                 connection.startTLS( false, directTLS );
             }
@@ -239,7 +239,8 @@ public class ServerDialback {
 
             final InputStream input;
             if (directTLS) {
-                input = ((SocketConnection)connection).getTLSStreamHandler().getInputStream();
+                input = null; // TODO
+// TODO                input = ((SocketConnection)connection).getTLSStreamHandler().getInputStream();
             } else {
                 input = socket.getInputStream();
             }

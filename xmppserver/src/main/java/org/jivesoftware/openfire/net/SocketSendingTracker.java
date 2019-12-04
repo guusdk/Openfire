@@ -113,8 +113,8 @@ public class SocketSendingTracker {
      * quite small.
      */
     private void checkHealth() {
-        for (SocketConnection connection : SocketConnection.getInstances()) {
-            connection.checkHealth();
-        }
+//   TODO     for (SocketConnection connection : SocketConnection.getInstances()) {
+//            connection.checkHealth();
+//        }
     }
 }

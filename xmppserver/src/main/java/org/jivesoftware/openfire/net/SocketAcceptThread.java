@@ -51,7 +51,7 @@ public class SocketAcceptThread extends Thread {
         this.directTLS = directTLS;
 
         // Set the blocking reading mode to use
-        acceptingMode = new BlockingAcceptingMode(tcpPort, bindInterface, directTLS);
+//   TODO     acceptingMode = new BlockingAcceptingMode(tcpPort, bindInterface, directTLS);
     }
 
     /**
