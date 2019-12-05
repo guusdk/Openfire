@@ -18,8 +18,6 @@ package org.jivesoftware.openfire.session;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.mina.core.future.ConnectFuture;
-import org.apache.mina.core.future.IoFuture;
-import org.apache.mina.core.future.IoFutureListener;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.executor.ExecutorFilter;
@@ -37,10 +35,8 @@ import org.jivesoftware.openfire.nio.NIOConnection;
 import org.jivesoftware.openfire.server.OutgoingServerSocketReader;
 import org.jivesoftware.openfire.server.RemoteServerManager;
 import org.jivesoftware.openfire.server.ServerDialback;
-import org.jivesoftware.openfire.spi.BasicStreamIDFactory;
-import org.jivesoftware.openfire.spi.ConnectionConfiguration;
-import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
-import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.openfire.spi.*;
+import org.jivesoftware.util.CheckedSupplier;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.StringUtils;
 import org.slf4j.Logger;
@@ -50,18 +46,14 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmpp.packet.*;
 
 import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLHandshakeException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -490,7 +482,6 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
     private static ConnectionConfiguration getConnectionConfiguration()  {
         try {
             return new ConnectionConfiguration(
-                // TODO: Most of this
                 ConnectionType.SOCKET_S2S,
                 true,
                 4,
@@ -503,15 +494,57 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 XMPPServer.getInstance().getCertificateStoreManager().getTrustStoreConfiguration(ConnectionType.SOCKET_S2S),
                 true,
                 true,
-                ImmutableSet.of(),
-                ImmutableSet.of(),
-                null
+                getEncryptionProtocols(),
+                getEncryptionCipherSuites(),
+                Connection.CompressionPolicy.disabled
             );
         } catch (IOException ioex) {
             //TODO
             Log.error("Bad", ioex);
             throw new RuntimeException(ioex);
         }
+    }
+    
+    private static Set<String> getEncryptionProtocols() {
+        try {
+            return getPropertySet(
+                ConnectionType.SOCKET_S2S.getPrefix() + "protocols",
+                EncryptionArtifactFactory::getDefaultProtocols,
+                EncryptionArtifactFactory::getSupportedProtocols);
+        } catch (final Exception ex) {
+            Log.error("An error occured getting the encryption protocol settings", ex);
+            return Collections.emptySet();
+        }
+    }
+    
+    private static Set<String> getEncryptionCipherSuites() {
+        try {
+            return getPropertySet(
+                ConnectionType.SOCKET_S2S + "ciphersuites",
+                EncryptionArtifactFactory::getDefaultCipherSuites,
+                EncryptionArtifactFactory::getSupportedCipherSuites);
+        } catch(final Exception ex) {
+            Log.error("An error occoured getting the cipher suite settings", ex);
+            return Collections.emptySet();
+        }
+    }
+    
+    private static Set<String> getPropertySet(String propertyName, CheckedSupplier<? extends Collection<String>> orDefaults, CheckedSupplier<? extends Collection<String>> retainingOnly) throws Exception {
+        Set<String> r = new LinkedHashSet<>();
+        String raw = JiveGlobals.getProperty(propertyName, "").trim();
+
+        if (raw.isEmpty()) {
+            if(orDefaults != null) {
+                r.addAll(orDefaults.get());
+            }
+        } else {
+            r.addAll(Arrays.asList(raw.split("\\s*,\\s*")));
+        }
+       
+        if(retainingOnly != null) {
+            r.retainAll(retainingOnly.get());
+        }
+        return r;
     }
 
     private static LocalOutgoingServerSession secureAndAuthenticate(String remoteDomain, Connection connection, XMPPPacketReader reader, StringBuilder openingStream, String localDomain) throws Exception {
