@@ -17,6 +17,8 @@
 package org.jivesoftware.openfire.session;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.commons.fileupload.util.Streams;
+import org.apache.mina.core.buffer.IoBuffer;
 import org.apache.mina.core.future.ConnectFuture;
 import org.apache.mina.core.service.IoHandlerAdapter;
 import org.apache.mina.core.session.IoSession;
@@ -47,8 +49,10 @@ import org.xmpp.packet.*;
 
 import javax.net.ssl.SSLException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -294,7 +298,6 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                     socket.setSoTimeout(5000);
 
 
-//                    XMPPPacketReader reader = new XMPPPacketReader();
 
 //                    final InputStream inputStream;
 //                    if (directTLS) {
@@ -305,17 +308,6 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
 
 //                    session.read().addListener()
 
-//                        reader.getXPPParser().setInput(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-
-                    // Get the answer from the Receiving Server
-//                    XmlPullParser xpp = reader.getXPPParser();
-//                    for (int eventType = xpp.getEventType(); eventType != XmlPullParser.START_TAG; ) {
-//                        eventType = xpp.next();
-//                    }
-//
-//                    String serverVersion = xpp.getAttributeValue("", "version");
-//                    String id = xpp.getAttributeValue("", "id");
-//                    log.debug("Got a response (stream ID: {}, version: {}). Check if the remote server is XMPP 1.0 compliant...", id, serverVersion);
                 }
 
                 @Override
@@ -325,8 +317,26 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
 
                 @Override
                 public void messageReceived(IoSession session, Object message) throws Exception {
-                    super.messageReceived(session, message);
-                    Log.warn("[!!!] messageReceived(_, [{}] <- {}", message.getClass().getSimpleName(), message.toString());
+//                    Log.warn("[!!!] messageReceived(_, [{}] <- {}", message.getClass().getSimpleName(), message.toString());
+                    
+                    if( ! (message instanceof IoBuffer)) {
+                        Log.warn("Don't know what to do with incoming message of type {}", message.getClass().getSimpleName());
+                        return;
+                    }
+                    
+                    IoBuffer buffer = ((IoBuffer)message);
+                    XMPPPacketReader reader = new XMPPPacketReader();
+                    reader.getXPPParser().setInput(new InputStreamReader(buffer.asInputStream(), StandardCharsets.UTF_8));
+
+                    // Get the answer from the Receiving Server
+                    XmlPullParser xpp = reader.getXPPParser();
+                    for (int eventType = xpp.getEventType(); eventType != XmlPullParser.START_TAG; ) {
+                        eventType = xpp.next();
+                    }
+//
+                    String serverVersion = xpp.getAttributeValue("", "version");
+                    String id = xpp.getAttributeValue("", "id");
+                    log.debug("Got a response (stream ID: {}, version: {}). Check if the remote server is XMPP 1.0 compliant...", id, serverVersion);
                 }
             });
             ConnectFuture connectFuture = socketConnector.connect(socketAddress);
