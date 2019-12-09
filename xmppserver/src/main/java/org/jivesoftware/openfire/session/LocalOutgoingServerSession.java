@@ -273,11 +273,12 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 public void sessionOpened(IoSession session) throws Exception {
 
                     Connection c = new NIOConnection(session, XMPPServer.getInstance().getPacketDeliverer(), getConnectionConfiguration());
-                    try {
-                        c.startTLS(true, true);
-                    } catch (SSLException sslex) {
+//                    try {
                         // TODO
-                    }
+//                        c.startTLS(true, true);
+//                    } catch (SSLException sslex) {
+                        // TODO
+//                    }
                     log.debug("Send the stream header and wait for response...");
                     String openingStream = "<stream:stream" +
                         " xmlns:db=\"jabber:server:dialback\"" +
