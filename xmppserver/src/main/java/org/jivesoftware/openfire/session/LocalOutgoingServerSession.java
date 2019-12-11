@@ -34,6 +34,7 @@ import org.jivesoftware.openfire.net.MXParser;
 import org.jivesoftware.openfire.net.SASLAuthentication;
 import org.jivesoftware.openfire.net.SocketUtil;
 import org.jivesoftware.openfire.nio.NIOConnection;
+import org.jivesoftware.openfire.nio.OutgoingServerConnectionHandler;
 import org.jivesoftware.openfire.server.OutgoingServerSocketReader;
 import org.jivesoftware.openfire.server.RemoteServerManager;
 import org.jivesoftware.openfire.server.ServerDialback;
@@ -275,31 +276,18 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
             NioSocketConnector socketConnector = new NioSocketConnector();
             socketConnector.getFilterChain().addFirst(ConnectionManagerImpl.EXECUTOR_FILTER_NAME, 
                 new ExecutorFilter(2, 4, 60, TimeUnit.SECONDS));
-            socketConnector.setHandler(new IoHandlerAdapter() {
+            /*socketConnector.setHandler(new IoHandlerAdapter() {
                 @Override
                 public void sessionOpened(IoSession session) throws Exception {
 
                     NIOConnection c = new NIOConnection(session, XMPPServer.getInstance().getPacketDeliverer(), getConnectionConfiguration());
                     connection.complete(c);
 //                    try {
-                        // TODO
+//                         TODO
 //                        c.startTLS(true, true);
 //                    } catch (SSLException sslex) {
-                        // TODO
+//                         TODO
 //                    }
-                    log.debug("Send the stream header and wait for response...");
-                    String openingStream = "<stream:stream" +
-                        " xmlns:db=\"jabber:server:dialback\"" +
-                        " xmlns:stream=\"http://etherx.jabber.org/streams\"" +
-                        " xmlns=\"jabber:server\"" +
-                        " from=\"" + localDomain + "\"" + // OF-673
-                        " to=\"" + remoteDomain + "\"" +
-                        " version=\"1.0\">";
-                    c.deliverRawText(openingStream);
-
-                    // Set a read timeout (of 5 seconds) so we don't keep waiting forever
-                    int soTimeout = socket.getSoTimeout();
-                    socket.setSoTimeout(5000);
                     
 
 
@@ -348,7 +336,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                     
                     
                 }
-            });
+            });*/
+            socketConnector.setHandler(new OutgoingServerConnectionHandler(getConnectionConfiguration(), localDomain, remoteDomain, port));
             ConnectFuture connectFuture = socketConnector.connect(socketAddress);
 
 
