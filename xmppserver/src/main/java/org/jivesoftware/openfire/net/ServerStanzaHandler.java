@@ -106,10 +106,9 @@ public class ServerStanzaHandler extends StanzaHandler {
         // TODO Finish implementation
         if ("jabber:server".equals(namespace)) {
             // The connected client is a server so create an IncomingServerSession
-            XMPPPacketReader reader = new XMPPPacketReader();
-            reader.setXPPFactory(XmlPullParserFactory.newInstance(MXParser.class.getName(), null));
+            
             try {
-                session = LocalIncomingServerSession.createSession(serverName, reader, connection, /* TODO */ true);
+                session = LocalIncomingServerSession.createSession(serverName, xpp, connection, /* TODO */ true);
             } catch (final IOException ioex) {
                 Log.error("Failed to create server session", ioex);
                 return false;

@@ -104,9 +104,9 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
      * @throws org.xmlpull.v1.XmlPullParserException if an error occurs while parsing the XML.
      * @throws java.io.IOException if an input/output error occurs while using the connection.
      */
-    public static LocalIncomingServerSession createSession(String serverName, XMPPPacketReader reader,
+    public static LocalIncomingServerSession createSession(String serverName, XmlPullParser xpp,
             Connection connection, boolean directTLS) throws XmlPullParserException, IOException {
-        XmlPullParser xpp = reader.getXPPParser();
+//        XmlPullParser xpp = reader.getXPPParser();
                 
         String version = xpp.getAttributeValue("", "version");
         String fromDomain = xpp.getAttributeValue("", "from");
