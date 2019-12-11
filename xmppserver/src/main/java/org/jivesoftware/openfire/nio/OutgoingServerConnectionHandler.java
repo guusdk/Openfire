@@ -1,8 +1,11 @@
 package org.jivesoftware.openfire.nio;
 
+import org.apache.mina.core.buffer.IoBuffer;
 import org.apache.mina.core.session.IoSession;
 import org.jivesoftware.openfire.Connection;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class OutgoingServerConnectionHandler extends ServerConnectionHandler {
     
@@ -39,6 +42,7 @@ public class OutgoingServerConnectionHandler extends ServerConnectionHandler {
 
     @Override
     public void messageReceived(IoSession session, Object message) throws Exception {
-        super.messageReceived(session, message);
+        IoBuffer buffer = ((IoBuffer)message);
+        super.messageReceived(session, buffer.getString(UTF_8.newDecoder()));
     }
 }
