@@ -56,6 +56,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -264,7 +266,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
         Socket socket = socketToXmppDomain.getKey();
         boolean directTLS = socketToXmppDomain.getValue();
 
-        Connection connection = null;
+        CompletableFuture<NIOConnection> connection = new CompletableFuture<>();
+        CompletableFuture<LocalOutgoingServerSession> createdSession = new CompletableFuture<>();
         try {
             final SocketAddress socketAddress = socket.getRemoteSocketAddress();
             log.debug("Opening a new connection to {} {}.", socketAddress, directTLS ? "using directTLS" : "that is initially not encrypted");
@@ -276,7 +279,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 @Override
                 public void sessionOpened(IoSession session) throws Exception {
 
-                    Connection c = new NIOConnection(session, XMPPServer.getInstance().getPacketDeliverer(), getConnectionConfiguration());
+                    NIOConnection c = new NIOConnection(session, XMPPServer.getInstance().getPacketDeliverer(), getConnectionConfiguration());
+                    connection.complete(c);
 //                    try {
                         // TODO
 //                        c.startTLS(true, true);
@@ -296,6 +300,7 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                     // Set a read timeout (of 5 seconds) so we don't keep waiting forever
                     int soTimeout = socket.getSoTimeout();
                     socket.setSoTimeout(5000);
+                    
 
 
 
@@ -327,6 +332,9 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                     IoBuffer buffer = ((IoBuffer)message);
                     XMPPPacketReader reader = new XMPPPacketReader();
                     reader.getXPPParser().setInput(new InputStreamReader(buffer.asInputStream(), StandardCharsets.UTF_8));
+                    
+                    // TODO
+                    createdSession.complete(new LocalOutgoingServerSession(localDomain, connection.get(), new OutgoingServerSocketReader(reader), null));
 
                     // Get the answer from the Receiving Server
                     XmlPullParser xpp = reader.getXPPParser();
@@ -337,6 +345,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                     String serverVersion = xpp.getAttributeValue("", "version");
                     String id = xpp.getAttributeValue("", "id");
                     log.debug("Got a response (stream ID: {}, version: {}). Check if the remote server is XMPP 1.0 compliant...", id, serverVersion);
+                    
+                    
                 }
             });
             ConnectFuture connectFuture = socketConnector.connect(socketAddress);
@@ -484,10 +494,13 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
 //            log.warn( "Unable to create a new session: exhausted all options (not trying dialback as a fallback, as server dialback is disabled by configuration." );
 //            return null;
 //        }
+            return createdSession.get();
         }
-            finally{
-                return null;
-            }
+        catch (final Exception ex) {
+            // TODO 
+            Log.error("Error", ex);
+        }
+        return null;
     }
     
     private static ConnectionConfiguration getConnectionConfiguration()  {
