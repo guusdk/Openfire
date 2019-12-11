@@ -40,9 +40,4 @@ public class OutgoingServerConnectionHandler extends ServerConnectionHandler {
 //        socket.setSoTimeout(5000);
     }
 
-    @Override
-    public void messageReceived(IoSession session, Object message) throws Exception {
-        IoBuffer buffer = ((IoBuffer)message);
-        super.messageReceived(session, buffer.getString(UTF_8.newDecoder()));
-    }
 }
