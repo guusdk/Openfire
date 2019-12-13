@@ -23,6 +23,8 @@ import org.jivesoftware.openfire.PacketRouter;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.session.ConnectionSettings;
 import org.jivesoftware.openfire.session.LocalIncomingServerSession;
+import org.jivesoftware.openfire.session.LocalOutgoingServerSession;
+import org.jivesoftware.openfire.session.OutgoingServerSession;
 import org.jivesoftware.util.JiveGlobals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,13 +59,17 @@ public class ServerStanzaHandler extends StanzaHandler {
 
     private static final Logger Log = LoggerFactory.getLogger(ServerStanzaHandler.class);
 
-    public ServerStanzaHandler(PacketRouter router, Connection connection) {
+    private final boolean isOutbound;
+
+    public ServerStanzaHandler(PacketRouter router, Connection connection, boolean isOutbound) {
         super(router, connection);
+        this.isOutbound = isOutbound;
     }
 
     @Deprecated
     public ServerStanzaHandler(PacketRouter router, String serverName, Connection connection) {
         super(router, connection);
+        isOutbound = false; // FIXME this is a hardcoded value only to get this to compile. Can this constructor be deleted?
     }
 
     @Override
@@ -110,10 +116,14 @@ public class ServerStanzaHandler extends StanzaHandler {
             throws XmlPullParserException {
         // TODO Finish implementation
         if ("jabber:server".equals(namespace)) {
-            // The connected client is a server so create an IncomingServerSession
-            
+            // Determine if this is invoked by a remote server responding to our open stream (from OutgoingServerSession),
+            // or if the remote server itself is initiating the stream.
             try {
-                session = LocalIncomingServerSession.createSession(serverName, xpp, connection, /* TODO */ true);
+                if (isOutbound) {
+                    session = LocalOutgoingServerSession.createSession(serverName, xpp, connection, /* TODO */ true);
+                } else {
+                    session = LocalIncomingServerSession.createSession(serverName, xpp, connection, /* TODO */ true);
+                }
             } catch (final IOException ioex) {
                 Log.error("Failed to create server session", ioex);
                 return false;

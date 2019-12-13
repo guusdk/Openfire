@@ -29,7 +29,7 @@ public class ServerConnectionHandler extends ConnectionHandler
     @Override
     StanzaHandler createStanzaHandler( NIOConnection connection )
     {
-        return new ServerStanzaHandler( XMPPServer.getInstance().getPacketRouter(), connection );
+        return new ServerStanzaHandler( XMPPServer.getInstance().getPacketRouter(), connection, false );
     }
 
     @Override
