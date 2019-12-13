@@ -81,6 +81,11 @@ public class ServerStanzaHandler extends StanzaHandler {
             ((LocalIncomingServerSession) session).verifyReceivedKey(doc);
             return true;
         }
+        else if ("stream".equals(doc.getNamespacePrefix()) && "features".equals(doc.getName()) ) {
+            // FIXME process features.
+            Log.info("Received stream features: {}", doc.asXML());
+            return true;
+        }
         return false;
     }
 

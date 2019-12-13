@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.List;
 
+import static org.xmlpull.v1.XmlPullParser.FEATURE_PROCESS_NAMESPACES;
+
 /**
  * A StanzaHandler is the main responsible for handling incoming stanzas. Some stanzas like startTLS
  * are totally managed by this class. The rest of the stanzas are just forwarded to the router.
@@ -112,8 +114,10 @@ public abstract class StanzaHandler {
     public void process(String stanza, XMPPPacketReader reader) throws Exception {
         Log.debug("{}::process() called for Stanza:\n {}\n", this.getClass().getSimpleName(), stanza);
         boolean initialStream = stanza.startsWith("<stream:stream") || stanza.startsWith("<flash:stream");
+        boolean features = stanza.startsWith("<stream:features" );
+        boolean prolog = !sessionCreated && !initialStream && !features;
         if (!sessionCreated || initialStream) {
-            if (!initialStream) {
+            if (prolog) {
                 // Allow requests for flash socket policy files directly on the client listener port
                 if (stanza.startsWith("<policy-file-request/>")) {
                     String crossDomainText = FlashCrossDomainServlet.CROSS_DOMAIN_TEXT +
@@ -162,8 +166,25 @@ public abstract class StanzaHandler {
         if (stanza.startsWith("<?xml")) {
             return;
         }
+
         // Create DOM object from received stanza
-        Element doc = reader.read(new StringReader(stanza)).getRootElement();
+        Element doc;
+        if (features) {
+            // When creating DOM objects from stanzas, a parser is used that gets its input reset
+            // for every invocation. That makes the parser loose all knowledge about namespaces defined
+            // on the stream level. Apart from server-to-server specific processing (eg: feature negotiation)
+            // these namespaces apparently go unused (which is why this has worked for other connection types).
+            // To work around the issue, we'll process server-to-server stream data such as features using a
+            // parser that ignores namespaces.
+            // Alternative to this solution, we might want to split off a solution into the more specific
+            // server-to-server implementation of ServerConnectionHandler.
+            final XMPPPacketReader featuresReader = new XMPPPacketReader();
+            featuresReader.getXPPParser().setFeature(FEATURE_PROCESS_NAMESPACES, false);
+            featuresReader.getXPPParser().setInput(new StringReader(stanza));
+            doc = featuresReader.read(new StringReader(stanza)).getRootElement();
+        } else {
+            doc = reader.read(new StringReader(stanza)).getRootElement();
+        }
         if (doc == null) {
             // No document found.
             return;
