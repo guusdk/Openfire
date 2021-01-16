@@ -27,6 +27,8 @@ import org.jivesoftware.openfire.cluster.ClusterManager;
 import org.jivesoftware.openfire.container.BasicModule;
 import org.jivesoftware.openfire.event.UserEventDispatcher;
 import org.jivesoftware.openfire.event.UserEventListener;
+import org.jivesoftware.openfire.privacy.PrivacyList;
+import org.jivesoftware.openfire.privacy.PrivacyListManager;
 import org.jivesoftware.openfire.user.User;
 import org.jivesoftware.openfire.user.UserManager;
 import org.jivesoftware.util.JiveConstants;
@@ -186,6 +188,14 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
         // If the username is null (such as when an anonymous user), don't store.
         if (username == null || !UserManager.getInstance().isRegisteredUser(recipient, false)) {
             Log.trace( "Not storing message for which the recipient ({}) is not a registered local user.", recipient );
+            return false;
+        }
+
+        // If the sender of the message is on the user's default privacy list, don't store (OF-2189). Note that we're
+        // processing messages sent to an offline user, so an active privacy list does not apply.
+        final PrivacyList defaultPrivacyList = PrivacyListManager.getInstance().getDefaultPrivacyList(username);
+        if (defaultPrivacyList.shouldBlockPacket(message)) {
+            Log.trace( "Not storing message, as it is rejected by the default privacy list of the recipient ({}).", recipient );
             return false;
         }
 
