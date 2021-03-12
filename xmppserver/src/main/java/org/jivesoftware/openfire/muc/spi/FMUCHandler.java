@@ -441,7 +441,7 @@ public class FMUCHandler
     public synchronized CompletableFuture<?> propagate( @Nonnull Packet stanza, @Nonnull MUCRole sender )
     {
         if ( !(room.isFmucEnabled() && FMUC_ENABLED.getValue()) ) {
-            Log.debug( "(room: '{}'): FMUC disabled, skipping FMUC propagation.", room.getJID() );
+            Log.trace( "(room: '{}'): FMUC disabled, skipping FMUC propagation.", room.getJID() );
             return CompletableFuture.completedFuture(null);
         }
 

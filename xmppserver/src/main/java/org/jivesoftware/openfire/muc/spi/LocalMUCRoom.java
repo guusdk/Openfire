@@ -1537,7 +1537,7 @@ public class LocalMUCRoom implements MUCRoom, GroupEventListener {
      */
     public void broadcast(@Nonnull BroadcastPresenceRequest presenceRequest)
     {
-        Log.debug("Broadcasting presence update in room {} for occupant {}", this.getName(), presenceRequest.getPresence().getFrom() );
+        Log.trace("Broadcasting presence update in room {} for occupant {}", this.getName(), presenceRequest.getPresence().getFrom() );
 
         final Presence presence = presenceRequest.getPresence();
 
