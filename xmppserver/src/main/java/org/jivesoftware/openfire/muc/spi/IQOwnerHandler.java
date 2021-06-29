@@ -55,7 +55,7 @@ public class IQOwnerHandler {
     
     private static final Logger Log = LoggerFactory.getLogger(IQOwnerHandler.class);
 
-    private final LocalMUCRoom room;
+    private final MUCRoom room;
 
     private final PacketRouter router;
 
@@ -65,7 +65,7 @@ public class IQOwnerHandler {
 
     private final boolean skipInvite;
 
-    public IQOwnerHandler(LocalMUCRoom chatroom, PacketRouter packetRouter) {
+    public IQOwnerHandler(MUCRoom chatroom, PacketRouter packetRouter) {
         this.room = chatroom;
         this.router = packetRouter;
         this.skipInvite = JiveGlobals.getBooleanProperty(
@@ -408,7 +408,7 @@ public class IQOwnerHandler {
         if (ownersSent) {
             // Change the affiliation to "member" for the current owners that won't be neither
             // owner nor admin (if the form included the owners field)
-            List<JID> ownersToRemove = new ArrayList<>(room.owners);
+            List<JID> ownersToRemove = new ArrayList<>(room.getOwners());
             ownersToRemove.removeAll(admins);
             ownersToRemove.removeAll(owners);
             for (JID jid : ownersToRemove) {
@@ -422,7 +422,7 @@ public class IQOwnerHandler {
         if (adminsSent) {
             // Change the affiliation to "member" for the current admins that won't be neither
             // owner nor admin (if the form included the admins field)
-            List<JID> adminsToRemove = new ArrayList<>(room.admins);
+            List<JID> adminsToRemove = new ArrayList<>(room.getAdmins());
             adminsToRemove.removeAll(admins);
             adminsToRemove.removeAll(owners);
             for (JID jid : adminsToRemove) {
@@ -446,8 +446,7 @@ public class IQOwnerHandler {
     }
 
     private void refreshConfigurationFormValues() {
-        room.lock.readLock().lock();
-        try {
+        synchronized (room) {
             FormField field = configurationForm.getField("muc#roomconfig_roomname");
             field.clearValues();
             field.addValue(room.getNaturalLanguageName());
@@ -563,9 +562,6 @@ public class IQOwnerHandler {
             // Add the new representation of configurationForm as an element 
             probeResult.add(configurationForm.getElement());
 
-        }
-        finally {
-            room.lock.readLock().unlock();
         }
     }
 
