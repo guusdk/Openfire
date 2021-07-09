@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.QName;
-import org.jivesoftware.openfire.PacketRouter;
+import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.group.Group;
 import org.jivesoftware.openfire.group.GroupJID;
 import org.jivesoftware.openfire.group.GroupManager;
@@ -57,17 +57,14 @@ public class IQOwnerHandler {
 
     private final MUCRoom room;
 
-    private final PacketRouter router;
-
     private DataForm configurationForm;
 
     private Element probeResult;
 
     private final boolean skipInvite;
 
-    public IQOwnerHandler(MUCRoom chatroom, PacketRouter packetRouter) {
+    public IQOwnerHandler(MUCRoom chatroom) {
         this.room = chatroom;
-        this.router = packetRouter;
         this.skipInvite = JiveGlobals.getBooleanProperty(
                 "xmpp.muc.skipInvite", false);
         init();
@@ -144,7 +141,7 @@ public class IQOwnerHandler {
         if (reply.getTo() != null) {
             // Send a reply only if the sender of the original packet was from a real JID. (i.e. not
             // a packet generated locally)
-            router.route(reply);
+            XMPPServer.getInstance().getPacketRouter().route(reply);
         }
     }
 
