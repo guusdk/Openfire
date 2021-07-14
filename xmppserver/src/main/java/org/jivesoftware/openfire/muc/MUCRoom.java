@@ -3608,6 +3608,7 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result {
     public void writeExternal(ObjectOutput out) throws IOException {
         ExternalizableUtil.getInstance().writeSafeUTF(out, name);
         ExternalizableUtil.getInstance().writeLong(out, startTime);
+        ExternalizableUtil.getInstance().writeLong(out, endTime);
         ExternalizableUtil.getInstance().writeLong(out, lockedTime);
         ExternalizableUtil.getInstance().writeSerializableCollection(out, owners);
         ExternalizableUtil.getInstance().writeSerializableCollection(out, admins);
@@ -3625,6 +3626,7 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result {
         ExternalizableUtil.getInstance().writeBoolean(out, canOccupantsInvite);
         ExternalizableUtil.getInstance().writeSafeUTF(out, password);
         ExternalizableUtil.getInstance().writeBoolean(out, canAnyoneDiscoverJID);
+        ExternalizableUtil.getInstance().writeSafeUTF(out, canSendPrivateMessage);
         ExternalizableUtil.getInstance().writeBoolean(out, logEnabled);
         ExternalizableUtil.getInstance().writeBoolean(out, loginRestrictedToNickname);
         ExternalizableUtil.getInstance().writeBoolean(out, canChangeNickname);
@@ -3655,12 +3657,15 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result {
         }
         ExternalizableUtil.getInstance().writeBoolean(out, savedToDB);
         ExternalizableUtil.getInstance().writeSafeUTF(out, mucService.getServiceName());
+        ExternalizableUtil.getInstance().writeSerializable(out, roomHistory);
+        ExternalizableUtil.getInstance().writeSerializable(out, role);
     }
 
     @Override
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         name = ExternalizableUtil.getInstance().readSafeUTF(in);
         startTime = ExternalizableUtil.getInstance().readLong(in);
+        endTime = ExternalizableUtil.getInstance().readLong(in);
         lockedTime = ExternalizableUtil.getInstance().readLong(in);
         ExternalizableUtil.getInstance().readSerializableCollection(in, owners, getClass().getClassLoader());
         ExternalizableUtil.getInstance().readSerializableCollection(in, admins, getClass().getClassLoader());
@@ -3678,6 +3683,7 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result {
         canOccupantsInvite = ExternalizableUtil.getInstance().readBoolean(in);
         password = ExternalizableUtil.getInstance().readSafeUTF(in);
         canAnyoneDiscoverJID = ExternalizableUtil.getInstance().readBoolean(in);
+        canSendPrivateMessage = ExternalizableUtil.getInstance().readSafeUTF(in);
         logEnabled = ExternalizableUtil.getInstance().readBoolean(in);
         loginRestrictedToNickname = ExternalizableUtil.getInstance().readBoolean(in);
         canChangeNickname = ExternalizableUtil.getInstance().readBoolean(in);
@@ -3719,7 +3725,8 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result {
         this.iqAdminHandler = new IQAdminHandler(this);
         this.fmucHandler = new FMUCHandler(this);
 
-        role = MUCRole.createRoomRole(this);
+        roomHistory = (MUCRoomHistory) ExternalizableUtil.getInstance().readSerializable(in);
+        role = (MUCRole) ExternalizableUtil.getInstance().readSerializable(in);
     }
 
     public void updateConfiguration(MUCRoom otherRoom) {
