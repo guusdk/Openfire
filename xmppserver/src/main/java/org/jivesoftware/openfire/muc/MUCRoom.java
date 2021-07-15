@@ -1223,8 +1223,15 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result, Cach
             lock.unlock();
         }
 
-        final MUCUser mucUser = ((MultiUserChatServiceImpl)mucService).getChatUser(role.getUserAddress());
-        mucUser.addRoomName(getJID().getNode());
+        final Lock userLock = ((MultiUserChatServiceImpl)mucService).getChatUserLock(role.getUserAddress());
+        userLock.lock();
+        try {
+            final MUCUser mucUser = ((MultiUserChatServiceImpl) mucService).getChatUser(role.getUserAddress());
+            mucUser.addRoomName(getJID().getNode());
+            ((MultiUserChatServiceImpl)mucService).updateChatUser(mucUser);
+        } finally {
+            userLock.unlock();
+        }
     }
 
     /**
@@ -1335,8 +1342,15 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result, Cach
     public void removeOccupantRole(MUCRole leaveRole) {
         Log.trace( "Remove occupant from room {}: {}", this.getJID(), leaveRole );
 
-        final MUCUser mucUser = ((MultiUserChatServiceImpl)mucService).getChatUser(leaveRole.getUserAddress());
-        mucUser.removeRoomName(getJID().getNode());
+        final Lock userLock = ((MultiUserChatServiceImpl)mucService).getChatUserLock(role.getUserAddress());
+        userLock.lock();
+        try {
+            final MUCUser mucUser = ((MultiUserChatServiceImpl)mucService).getChatUser(leaveRole.getUserAddress());
+            mucUser.removeRoomName(getJID().getNode());
+            ((MultiUserChatServiceImpl)mucService).updateChatUser(mucUser);
+        } finally {
+            userLock.unlock();
+        }
 
         final Lock lock = ROOM_OCCUPANTS_CACHE.getLock(getJID());
         lock.lock();
@@ -1376,8 +1390,15 @@ public class MUCRoom implements GroupEventListener, Externalizable, Result, Cach
                         // list of removed occupants to process later outside of the lock.
                         removedRoles.add(leaveRole);
 
-                        final MUCUser mucUser = ((MultiUserChatServiceImpl)mucService).getChatUser(leaveRole.getUserAddress());
-                        mucUser.removeRoomName(getJID().getNode());
+                        final Lock userLock = ((MultiUserChatServiceImpl)mucService).getChatUserLock(leaveRole.getUserAddress());
+                        userLock.lock();
+                        try {
+                            final MUCUser mucUser = ((MultiUserChatServiceImpl)mucService).getChatUser(leaveRole.getUserAddress());
+                            mucUser.removeRoomName(getJID().getNode());
+                            ((MultiUserChatServiceImpl)mucService).updateChatUser(mucUser);
+                        } finally {
+                            userLock.unlock();
+                        }
 
                         MUCEventDispatcher.occupantLeft(leaveRole.getRoleAddress(), leaveRole.getUserAddress(), leaveRole.getNickname());
                     }

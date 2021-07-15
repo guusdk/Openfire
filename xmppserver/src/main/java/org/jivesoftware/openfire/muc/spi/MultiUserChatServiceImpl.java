@@ -414,7 +414,15 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                         }
                     } else {
                         Log.trace( "Stanza is a regular MUC stanza." );
-                        getChatUser(userJid).process(packet);
+                        final Lock lock = getChatUserLock(userJid);
+                        lock.lock();
+                        try {
+                            final MUCUser chatUser = getChatUser(userJid);
+                            chatUser.process(packet);
+                            updateChatUser(chatUser);
+                        } finally {
+                            lock.unlock();
+                        }
                     }
                 }
             }
@@ -1001,10 +1009,25 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
     }
 
     /**
+     * Obtain a mutex object that can be used to control cluster-wide access to the MUCUser instance for a particular
+     * user.
+     *
+     * @param userjid The JID of the entity for which
+     * @return
+     */
+    public Lock getChatUserLock(final JID userjid)
+    {
+        return USERS_CACHE.getLock(userjid);
+    }
+
+    /**
      * Obtain a chat user by XMPPAddress.
      *
+     * If the instance is being modified after being returned from this method, then {@link #updateChatUser(MUCUser)}
+     * MUST be used. Failing to do so will cause the update to remain invisible to other cluster nodes.
+     *
      * @param userjid The XMPPAddress of the user.
-     * @return The chatuser corresponding to that XMPPAddress.
+     * @return The chat user corresponding to that XMPPAddress.
      */
     public MUCUser getChatUser(final JID userjid) {
         if (registerHandler == null) {
@@ -1024,6 +1047,23 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
             lock.unlock();
         }
         return user;
+    }
+
+    /**
+     * Ensures that updates to the provided MUCUser instance become visible to other cluster nodes.
+     *
+     * @param user A MUCUser instance.
+     */
+    public void updateChatUser(final MUCUser user)
+    {
+        final Lock lock = USERS_CACHE.getLock(user.getAddress());
+        lock.lock();
+        try {
+            USERS_CACHE.put(user.getAddress(), user);
+            localUsers.put(user.getAddress(), user);
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override

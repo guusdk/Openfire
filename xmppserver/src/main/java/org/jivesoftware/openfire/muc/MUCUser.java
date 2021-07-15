@@ -24,6 +24,7 @@ import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.cluster.NodeID;
 import org.jivesoftware.openfire.handler.IQPingHandler;
+import org.jivesoftware.openfire.muc.spi.MultiUserChatServiceImpl;
 import org.jivesoftware.openfire.stanzaid.StanzaIDUtil;
 import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserNotFoundException;
@@ -148,11 +149,14 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
      * should therefore only, and exclusively, be called by methods that add content to that cache (such as
      * {@link MUCRoom#addOccupantRole(MUCRole)})
      *
+     * Invocation of this method likely results in a change to the state of this instance. To make this change visible
+     * to other cluster nodes, it is required that the caller invokes {@link MultiUserChatServiceImpl#updateChatUser(MUCUser)}
+     * using this instance as an argument.
+     *
      * @param roomName name of a MUC room.
      */
     void addRoomName(String roomName) {
         roomNames.add(roomName);
-        // FIXME persist this change in the cache that holds all MUCUser instances!
     }
 
     /**
@@ -162,11 +166,14 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
      * should therefore only, and exclusively, be called by methods that remove content from that cache (such as
      * {@link MUCRoom#removeOccupantRole(MUCRole)})
      *
+     * Invocation of this method likely results in a change to the state of this instance. To make this change visible
+     * to other cluster nodes, it is required that the caller invokes {@link MultiUserChatServiceImpl#updateChatUser(MUCUser)}
+     * using this instance as an argument.
+     *
      * @param roomName name of a MUC room.
      */
     void removeRoomName(String roomName) {
         roomNames.remove(roomName);
-        // FIXME persist this change in the cache that holds all MUCUser instances!
     }
 
     /**
@@ -255,6 +262,10 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
      *   <li>If the room is registered, and presence "unavailable" leave the room</li>
      *   <li>Otherwise, rewrite the sender address and send to the room.</li>
      * </ul>
+     *
+     * Invocation of this method likely results in a change to the state of this instance. To make this change visible
+     * to other cluster nodes, it is required that the caller invokes {@link MultiUserChatServiceImpl#updateChatUser(MUCUser)}
+     * using this instance as an argument.
      *
      * @param packet The stanza to route
      */
