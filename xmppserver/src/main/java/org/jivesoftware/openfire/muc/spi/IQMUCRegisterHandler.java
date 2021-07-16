@@ -203,7 +203,9 @@ class IQMUCRegisterHandler {
                 for (Presence presence : presences) {
                     room.send(presence, room.getRole());
                 }
-
+                if (!presences.isEmpty()) {
+                    mucService.updateRoom(room);
+                }
             }
             catch (ForbiddenException e) {
                 reply = IQ.createResultIQ(packet);

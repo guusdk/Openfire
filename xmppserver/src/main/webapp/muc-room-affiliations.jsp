@@ -129,6 +129,8 @@
                 }
                 // Send the IQ packet that will modify the room's configuration
                 room.getIQAdminHandler().handleIQ(iq, room.getRole());
+                webManager.getMultiUserChatManager().getMultiUserChatService(roomJID).updateRoom(room);
+
                 // Log the event
                 for (String memberJID : memberJIDs) {
                     webManager.logEvent("set MUC affilation to "+affiliation+" for "+memberJID+" in "+roomName, null);

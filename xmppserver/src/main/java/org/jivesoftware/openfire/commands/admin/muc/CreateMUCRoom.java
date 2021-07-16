@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
 
 /**
  * Allows via AdHoc commands the creation of a Multi-User Chat room.
@@ -94,48 +95,55 @@ public class CreateMUCRoom extends AdHocCommand {
         }
         JID admin = admins.iterator().next();
         MUCRoom room;
-        try {
-            room = mucService.getChatRoom(roomname, admin);
-        }
-        catch (NotAllowedException e) {
-            note.addAttribute("type", "error");
-            note.setText("No permission to create rooms.");
-            return;
-        }
 
-        boolean isPersistent;
+        final Lock lock = mucService.getLock(roomname);
+        lock.lock();
         try {
-            final String value = get( data, "persistent", 0 );
-            if ( value == null ) { // this field is not required.
-                isPersistent = false;
-            } else {
-                isPersistent = DataForm.parseBoolean( value );
+            try {
+                room = mucService.getChatRoom(roomname, admin);
+            } catch (NotAllowedException e) {
+                note.addAttribute("type", "error");
+                note.setText("No permission to create rooms.");
+                return;
             }
-        } catch ( ParseException e ) {
-            note.addAttribute("type", "error");
-            note.setText("persistent has invalid value. Needs to be boolean.");
-            return;
-        }
-        room.setPersistent(isPersistent);
 
-        boolean isPublic;
-        try {
-            final String value = get( data, "public", 0 );
-            if ( value == null ) { // this field is not required.
-                isPublic = false;
-            } else {
-                isPublic = DataForm.parseBoolean( value );
+            boolean isPersistent;
+            try {
+                final String value = get(data, "persistent", 0);
+                if (value == null) { // this field is not required.
+                    isPersistent = false;
+                } else {
+                    isPersistent = DataForm.parseBoolean(value);
+                }
+            } catch (ParseException e) {
+                note.addAttribute("type", "error");
+                note.setText("persistent has invalid value. Needs to be boolean.");
+                return;
             }
-        } catch ( ParseException e ) {
-            note.addAttribute("type", "error");
-            note.setText("public has invalid value. Needs to be boolean.");
-            return;
-        }
-        room.setPublicRoom(isPublic);
+            room.setPersistent(isPersistent);
 
-        String password = get(data, "password", 0);
-        if (password != null) {
-            room.setPassword(password);
+            boolean isPublic;
+            try {
+                final String value = get(data, "public", 0);
+                if (value == null) { // this field is not required.
+                    isPublic = false;
+                } else {
+                    isPublic = DataForm.parseBoolean(value);
+                }
+            } catch (ParseException e) {
+                note.addAttribute("type", "error");
+                note.setText("public has invalid value. Needs to be boolean.");
+                return;
+            }
+            room.setPublicRoom(isPublic);
+
+            String password = get(data, "password", 0);
+            if (password != null) {
+                room.setPassword(password);
+            }
+            mucService.updateRoom(room);
+        } finally {
+            lock.unlock();
         }
     }
 

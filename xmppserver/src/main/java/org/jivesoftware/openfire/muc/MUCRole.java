@@ -302,6 +302,15 @@ public class MUCRole implements Cacheable, Externalizable {
     }
 
     /**
+     * Obtain the chat room service that hosts the room that hosts this user's role.
+     *
+     * @return The sdervice hosting this role.
+     */
+    public MultiUserChatService getChatRoomService() {
+        return XMPPServer.getInstance().getMultiUserChatManager().getMultiUserChatService(roomJid);
+    }
+
+    /**
      * Obtain the chat room that hosts this user's role.
      *
      * @return The chatroom hosting this role.

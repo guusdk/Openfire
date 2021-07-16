@@ -26,8 +26,14 @@ public class LocalMUCRoomManager
 {
     private static final Logger Log = LoggerFactory.getLogger(LocalMUCRoomManager.class);
 
+    /**
+     * Name of the service that this instance is operating for.
+     */
     private final String serviceName;
 
+    /**
+     * The cluster-shared data structure that holds all MUC rooms.
+     */
     private final Cache<String, MUCRoom> CACHE_ROOM;
 
     /**
@@ -51,29 +57,33 @@ public class LocalMUCRoomManager
         return CACHE_ROOM.size();
     }
 
+    /**
+     * Obtain a mutex object that can be used to control cluster-wide access to the MUCRoom instance.
+     *
+     * @param roomName The name of the entity for which to return a lock.
+     * @return A lock object that can be used to control cluster-wide access to a particular MUCRoom instance.
+     */
     public Lock getLock(@Nonnull final String roomName) {
         return CACHE_ROOM.getLock(roomName);
     }
 
-    public void addRoom(final String roomname, final MUCRoom room) {
-        final Lock lock = CACHE_ROOM.getLock(roomname);
-        lock.lock();
-        try {
-            CACHE_ROOM.put(roomname, room);
-            rooms.put(roomname, room);
-        } finally {
-            lock.unlock();
-        }
-
+    public void addRoom(final MUCRoom room) {
+        updateRoom(room);
         GroupEventDispatcher.addListener(room); // TODO this event listener is added only in the node where the room is created. Does this mean that events are not prop
     }
 
-    public void updateRoom(final String roomname, final MUCRoom room) {
-        final Lock lock = CACHE_ROOM.getLock(roomname);
+    /**
+     * Ensures that updates to the provided MUCRoom instance become visible to other cluster nodes.
+     *
+     * @param room A MUCRoom instance.
+     */
+    public void updateRoom(final MUCRoom room)
+    {
+        final Lock lock = CACHE_ROOM.getLock(room.getName());
         lock.lock();
         try {
-            CACHE_ROOM.put(roomname, room);
-            rooms.put(roomname, room);
+            CACHE_ROOM.put(room.getName(), room);
+            rooms.put(room.getName(), room);
         } finally {
             lock.unlock();
         }
@@ -87,21 +97,29 @@ public class LocalMUCRoomManager
         return CACHE_ROOM.values();
     }
 
-    // TODO this should probably not be used without a lock having been acquired and set. Update all usages to do so.
-    public MUCRoom getRoom(final String roomname){
-        return CACHE_ROOM.get(roomname);
+    /**
+     * Obtain a chat room by name.
+     *
+     * If the instance is being modified after being returned from this method, then {@link #updateRoom(MUCRoom)}
+     * MUST be used. Failing to do so will cause the update to remain invisible to other cluster nodes.
+     *
+     * @param roomName The name of a chat room.
+     * @return The chat room corresponding to that name.
+     */
+    public MUCRoom getRoom(final String roomName) {
+        return CACHE_ROOM.get(roomName);
     }
-    
-    public MUCRoom removeRoom(final String roomname){
+
+    public MUCRoom removeRoom(final String roomName){
         //memory leak will happen if we forget remove it from GroupEventDispatcher
-        final Lock lock = CACHE_ROOM.getLock(roomname);
+        final Lock lock = CACHE_ROOM.getLock(roomName);
         lock.lock();
         try {
-            final MUCRoom room = CACHE_ROOM.remove(roomname);
+            final MUCRoom room = CACHE_ROOM.remove(roomName);
             if (room != null) {
                 GroupEventDispatcher.removeListener(room);
             }
-            rooms.remove(roomname);
+            rooms.remove(roomName);
             return room;
         } finally {
             lock.unlock();

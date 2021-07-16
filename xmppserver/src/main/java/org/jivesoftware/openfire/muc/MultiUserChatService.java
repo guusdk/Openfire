@@ -33,6 +33,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.Collectors;
 
 /**
@@ -361,7 +362,10 @@ public interface MultiUserChatService extends Component {
      * Obtains a chatroom by name. A chatroom is created for that name if none exists and the user
      * has permission. The user that asked for the chatroom will be the room's owner if the chatroom
      * was created.
-     * 
+     *
+     * If the instance is being modified after being returned from this method, then {@link #updateRoom(MUCRoom)}
+     * MUST be used. Failing to do so will cause the update to remain invisible to other cluster nodes.
+     *
      * @param roomName Name of the room to get.
      * @param userjid The user's normal jid, not the chat nickname jid.
      * @return The chatroom for the given name.
@@ -371,12 +375,30 @@ public interface MultiUserChatService extends Component {
 
     /**
      * Obtains a chatroom by name. If the chatroom does not exists then null will be returned.
-     * 
+     *
+     * If the instance is being modified after being returned from this method, then {@link #updateRoom(MUCRoom)}
+     * MUST be used. Failing to do so will cause the update to remain invisible to other cluster nodes.
+     *
      * @param roomName Name of the room to get.
      * @return The chatroom for the given name or null if the room does not exists.
      */
     MUCRoom getChatRoom(String roomName);
-    
+
+    /**
+     * Obtain a mutex object that can be used to control cluster-wide access to the MUCRoom instance.
+     *
+     * @param roomName The name of the entity for which to return a lock.
+     * @return A lock object that can be used to control cluster-wide access to a particular MUCRoom instance.
+     */
+    Lock getLock(@Nonnull final String roomName);
+
+    /**
+     * Ensures that updates to the provided MUCRoom instance become visible to other cluster nodes.
+     *
+     * @param room A MUCRoom instance.
+     */
+    void updateRoom(final MUCRoom room);
+
     /**
     * Forces a re-read of the room. Useful when a change occurs externally.
     * 

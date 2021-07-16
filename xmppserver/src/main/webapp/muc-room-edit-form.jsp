@@ -287,6 +287,7 @@
                 webManager.logEvent("updated MUC room "+roomName, "subject = "+roomSubject+"\nroomdesc = "+description+"\nroomname = "+naturalName+"\nmaxusers = "+maxUsers);
             }
             response.sendRedirect("muc-room-edit-form.jsp?" + params);
+            webManager.getMultiUserChatManager().getMultiUserChatService(room.getJID()).updateRoom(room);
             return;
         }
     }

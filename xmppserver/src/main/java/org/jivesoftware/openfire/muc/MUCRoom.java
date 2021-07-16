@@ -25,7 +25,6 @@ import org.jivesoftware.openfire.XMPPServer;
 import org.jivesoftware.openfire.auth.UnauthorizedException;
 import org.jivesoftware.openfire.event.GroupEventListener;
 import org.jivesoftware.openfire.group.*;
-import org.jivesoftware.openfire.muc.cluster.*;
 import org.jivesoftware.openfire.muc.spi.*;
 import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserNotFoundException;

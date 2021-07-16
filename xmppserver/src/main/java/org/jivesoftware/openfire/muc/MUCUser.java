@@ -502,6 +502,7 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
         {
             final MUCRoom chatRoom = preExistingRole.getChatRoom();
             chatRoom.changeSubject(packet, preExistingRole);
+            getChatService().updateRoom(chatRoom);
         }
         catch ( ForbiddenException e )
         {
@@ -598,6 +599,7 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
                 if ( chatRoom.isMembersOnly() )
                 {
                     chatRoom.addMember(jid, null, preExistingRole);
+                    preExistingRole.getChatRoomService().updateRoom(chatRoom);
                 }
 
                 // Send the invitation to the invitee
@@ -902,12 +904,14 @@ public class MUCUser implements ChannelHandler<Packet>, Cacheable, Externalizabl
                 historyRequest,
                 this,
                 packet.createCopy());
+            service.updateRoom(room);
 
             // If the client that created the room is non-MUC compliant then
             // unlock the room thus creating an "instant" room
             if ( mucInfo == null && room.isLocked() && !room.isManuallyLocked() )
             {
                 room.unlock(role);
+                service.updateRoom(room);
             }
         }
         catch ( UnauthorizedException e )

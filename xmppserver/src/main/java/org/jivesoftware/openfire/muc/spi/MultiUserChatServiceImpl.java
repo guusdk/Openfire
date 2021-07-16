@@ -408,6 +408,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                         final MUCRoom chatRoom = getChatRoom(roomName);
                         if ( chatRoom != null ) {
                             chatRoom.getFmucHandler().process(packet);
+                            updateRoom(chatRoom);
                         } else {
                             Log.warn( "Unable to process FMUC stanza, as room it's addressed to does not exist: {}", roomName );
                             // FIXME need to send error back in case of IQ request, and FMUC join. Might want to send error back in other cases too.
@@ -666,6 +667,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                                 final Presence kickedPresence = room.kickOccupant(user.getAddress(), null, null, timeoutKickReason);
                                 // Send the updated presence to the room occupants
                                 room.send(kickedPresence, room.getRole());
+                                updateRoom(room);
                                 Log.debug("Kicked occupant '{}' of room '{}' of service '{}' due to exceeding idle time limit.", user.getAddress(), roomName, chatServiceName);
                             } catch (final NotAllowedException e) {
                                 // Do nothing since we cannot kick owners or admins
@@ -823,7 +825,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                         created = true;
                     }
                 }
-                localMUCRoomManager.addRoom(roomName, room);
+                localMUCRoomManager.addRoom(room);
             }
         } finally {
             lock.unlock();
@@ -858,7 +860,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                         // room may be an old room that was not present in memory)
                         MUCPersistenceManager.loadFromDB(room);
                         loaded = true;
-                        localMUCRoomManager.addRoom(roomName,room);
+                        localMUCRoomManager.addRoom(room);
                     }
                     catch (final IllegalArgumentException e) {
                         // The room does not exist so do nothing
@@ -877,6 +879,28 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
         return room;
     }
 
+    /**
+     * Obtain a mutex object that can be used to control cluster-wide access to the MUCRoom instance.
+     *
+     * @param roomName The name of the entity for which to return a lock.
+     * @return A lock object that can be used to control cluster-wide access to a particular MUCRoom instance.
+     */
+    @Override
+    public Lock getLock(@Nonnull final String roomName) {
+        return localMUCRoomManager.getLock(roomName);
+    }
+
+    /**
+     * Ensures that updates to the provided MUCRoom instance become visible to other cluster nodes.
+     *
+     * @param room A MUCRoom instance.
+     */
+    @Override
+    public void updateRoom(final MUCRoom room)
+    {
+        localMUCRoomManager.updateRoom(room);
+    }
+
     @Override
     public void refreshChatRoom(final String roomName) {
         final Lock lock = localMUCRoomManager.getLock(roomName);
@@ -887,10 +911,6 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
         } finally {
             lock.unlock();
         }
-    }
-
-    public MUCRoom getLocalChatRoom(final String roomName) {
-        return localMUCRoomManager.getRoom(roomName);
     }
 
     @Override
@@ -998,6 +1018,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
                     }
                     try {
                         room.leaveRoom(role);
+                        updateRoom(room);
                     } catch (final Exception e) {
                         Log.error(e.getMessage(), e);
                     }
@@ -1012,8 +1033,8 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
      * Obtain a mutex object that can be used to control cluster-wide access to the MUCUser instance for a particular
      * user.
      *
-     * @param userjid The JID of the entity for which
-     * @return
+     * @param userjid The JID of the entity for which to return a lock.
+     * @return A lock object that can be used to control cluster-wide access to a particular MUCUser instance.
      */
     public Lock getChatUserLock(final JID userjid)
     {
@@ -1634,7 +1655,7 @@ public class MultiUserChatServiceImpl implements Component, MultiUserChatService
             // Load all the persistent rooms to memory
             final Instant cutoff = Instant.now().minus(Duration.ofDays(preloadDays));
             for (final MUCRoom room : MUCPersistenceManager.loadRoomsFromDB(this, Date.from(cutoff))) {
-                localMUCRoomManager.addRoom(room.getName(), room);
+                localMUCRoomManager.addRoom(room);
 
                 // Start FMUC, if desired.
                 room.getFmucHandler().applyConfigurationChanges();
