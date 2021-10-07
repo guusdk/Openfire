@@ -400,7 +400,6 @@ public class MUCRole implements Cacheable, Externalizable {
      * @see <a href="https://igniterealtime.atlassian.net/browse/OF-2163">issue OF-2163</a>
      */
     public void send(Packet packet) {
-        Log.debug("Send packet {} to nickname {} and userJid {}", packet.toXML(), getNickname(), userJid);
 
         if (packet == null) {
             return;
