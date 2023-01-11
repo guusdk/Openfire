@@ -42,7 +42,7 @@ public class KeystoreTestUtils
     private static final Object BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
     private static final Object END_CERT = "-----END CERTIFICATE-----";
 
-    public static final int KEY_SIZE = 512;
+    public static final int KEY_SIZE = 2048;
     public static final String KEY_ALGORITHM = "RSA";
     public static final String SIGNATURE_ALGORITHM = "SHA1withRSA";
 

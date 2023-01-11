@@ -246,7 +246,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
      * @param port default port to use to establish the connection.
      * @return new outgoing session to a remote domain, or null.
      */
-    private static LocalOutgoingServerSession createOutgoingSession(@Nonnull final DomainPair domainPair, int port) {
+    // package-protected to facilitate unit testing..
+    static LocalOutgoingServerSession createOutgoingSession(@Nonnull final DomainPair domainPair, int port) {
         final Logger log = LoggerFactory.getLogger( Log.getName() + "[Create outgoing session for: " + domainPair + "]" );
 
         log.debug( "Creating new session..." );
