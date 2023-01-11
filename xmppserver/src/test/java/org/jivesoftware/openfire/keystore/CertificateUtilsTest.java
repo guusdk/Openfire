@@ -56,7 +56,7 @@ public class CertificateUtilsTest
     public void testFilterValidWithOneValidCert() throws Exception
     {
         // Setup fixture.
-        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate();
+        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( valid );
 
@@ -76,7 +76,7 @@ public class CertificateUtilsTest
     public void testFilterValidWithOneInvalidCert() throws Exception
     {
         // Setup fixture.
-        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate();
+        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( invalid );
 
@@ -95,7 +95,7 @@ public class CertificateUtilsTest
     public void testFilterValidWithTwoDuplicateValidCerts() throws Exception
     {
         // Setup fixture.
-        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate();
+        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( valid );
         input.add( valid );
@@ -116,8 +116,8 @@ public class CertificateUtilsTest
     public void testFilterValidWithTwoDistinctValidCerts() throws Exception
     {
         // Setup fixture.
-        final X509Certificate validA = KeystoreTestUtils.generateValidCertificate();
-        final X509Certificate validB = KeystoreTestUtils.generateValidCertificate();
+        final X509Certificate validA = KeystoreTestUtils.generateValidCertificate().getCertificate();
+        final X509Certificate validB = KeystoreTestUtils.generateValidCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( validA );
         input.add( validB );
@@ -139,7 +139,7 @@ public class CertificateUtilsTest
     public void testFilterValidWithTwoDuplicateInvalidCerts() throws Exception
     {
         // Setup fixture.
-        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate();
+        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( invalid );
         input.add( invalid );
@@ -159,8 +159,8 @@ public class CertificateUtilsTest
     public void testFilterValidWithTwoDistinctInvalidCerts() throws Exception
     {
         // Setup fixture.
-        final X509Certificate invalidA = KeystoreTestUtils.generateExpiredCertificate();
-        final X509Certificate invalidB = KeystoreTestUtils.generateExpiredCertificate();
+        final X509Certificate invalidA = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
+        final X509Certificate invalidB = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( invalidA );
         input.add( invalidB );
@@ -180,8 +180,8 @@ public class CertificateUtilsTest
     public void testFilterValidWithValidAndInvalidCerts() throws Exception
     {
         // Setup fixture.
-        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate();
-        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate();
+        final X509Certificate valid = KeystoreTestUtils.generateValidCertificate().getCertificate();
+        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( valid );
         input.add( invalid );
@@ -207,9 +207,9 @@ public class CertificateUtilsTest
     public void testFilterValidWithMixOfValidityAndDuplicates() throws Exception
     {
         // Setup fixture.
-        final X509Certificate validA = KeystoreTestUtils.generateValidCertificate();
-        final X509Certificate validB = KeystoreTestUtils.generateValidCertificate();
-        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate();
+        final X509Certificate validA = KeystoreTestUtils.generateValidCertificate().getCertificate();
+        final X509Certificate validB = KeystoreTestUtils.generateValidCertificate().getCertificate();
+        final X509Certificate invalid = KeystoreTestUtils.generateExpiredCertificate().getCertificate();
         final Collection<X509Certificate> input = new ArrayList<>();
         input.add( validA );
         input.add( validA );
