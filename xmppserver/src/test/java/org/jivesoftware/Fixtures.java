@@ -18,10 +18,7 @@ package org.jivesoftware;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
-import org.jivesoftware.openfire.Connection;
-import org.jivesoftware.openfire.IQRouter;
-import org.jivesoftware.openfire.XMPPServer;
-import org.jivesoftware.openfire.XMPPServerInfo;
+import org.jivesoftware.openfire.*;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
 import org.jivesoftware.openfire.spi.ConnectionListener;
 import org.jivesoftware.openfire.spi.ConnectionManagerImpl;
@@ -47,6 +44,7 @@ import static org.mockito.Mockito.*;
 public final class Fixtures {
 
     public static final String XMPP_DOMAIN = "test.xmpp.domain";
+    public static final String HOSTNAME = XMPP_DOMAIN; // Make hostname be XMPP Domain name, to avoid the need for DNS SRV lookups
 
     private Fixtures() {
     }
@@ -99,6 +97,7 @@ public final class Fixtures {
         doReturn(mockXMPPServerInfo()).when(xmppServer).getServerInfo();
         doReturn(mockIQRouter()).when(xmppServer).getIQRouter();
         doReturn(mockConnectionManager()).when(xmppServer).getConnectionManager();
+        doReturn(mockSessionManager()).when(xmppServer).getSessionManager();
 
         return xmppServer;
     }
@@ -106,13 +105,18 @@ public final class Fixtures {
     public static XMPPServerInfo mockXMPPServerInfo() {
         final XMPPServerInfo xmppServerInfo = mock(XMPPServerInfo.class, withSettings().lenient());
         doReturn(XMPP_DOMAIN).when(xmppServerInfo).getXMPPDomain();
-        doReturn(XMPP_DOMAIN).when(xmppServerInfo).getHostname();
+        doReturn(HOSTNAME).when(xmppServerInfo).getHostname();
         return xmppServerInfo;
     }
 
     public static IQRouter mockIQRouter() {
         final IQRouter iqRouter = mock(IQRouter.class, withSettings().lenient());
         return iqRouter;
+    }
+
+    public static SessionManager mockSessionManager() {
+        final SessionManager sessionManager = mock(SessionManager.class, withSettings().lenient());
+        return sessionManager;
     }
 
     public static ConnectionManagerImpl mockConnectionManager() {

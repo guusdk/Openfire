@@ -42,6 +42,7 @@ public class KeystoreTestUtils
     private static final Object BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
     private static final Object END_CERT = "-----END CERTIFICATE-----";
 
+    public static final int CHAIN_LENGTH = 4;
     public static final int KEY_SIZE = 2048;
     public static final String KEY_ALGORITHM = "RSA";
     public static final String SIGNATURE_ALGORITHM = "SHA1withRSA";
@@ -106,26 +107,7 @@ public class KeystoreTestUtils
      */
     public static ResultHolder generateValidCertificateChain(@Nullable final String subjectCommonName) throws Exception
     {
-        int length = 4;
-        final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance( KEY_ALGORITHM );
-        keyPairGenerator.initialize( KEY_SIZE );
-
-        // Root certificate (representing the CA) is self-signed.
-        KeyPair subjectKeyPair = keyPairGenerator.generateKeyPair();
-        KeyPair issuerKeyPair = subjectKeyPair;
-
-        final X509Certificate[] result = new X509Certificate[ length ];
-        for ( int i = length - 1 ; i >= 0; i-- )
-        {
-            result[ i ] = generateTestCertificate( i == 0 ? subjectCommonName : null, true, issuerKeyPair, subjectKeyPair, i );
-
-            // Further away from the root CA, each certificate is issued by the previous subject.
-            issuerKeyPair = subjectKeyPair;
-            subjectKeyPair = keyPairGenerator.generateKeyPair();
-        }
-
-        // Note that the issuerKeyPair now holds the subjectKeyPair that was used last! SubjectKeyPair now holds an unused value.
-        return new ResultHolder(issuerKeyPair, result);
+        return generateCertificateChainWithExpiredCertOnPosition(subjectCommonName, -1);
     }
 
     /**
@@ -148,27 +130,7 @@ public class KeystoreTestUtils
      */
     public static ResultHolder generateCertificateChainWithExpiredEndEntityCert(@Nullable final String subjectCommonName) throws Exception
     {
-        int length = 4;
-        final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance( KEY_ALGORITHM );
-        keyPairGenerator.initialize( KEY_SIZE );
-
-        // Root certificate (representing the CA) is self-signed.
-        KeyPair subjectKeyPair = keyPairGenerator.generateKeyPair();
-        KeyPair issuerKeyPair = subjectKeyPair;
-
-        final X509Certificate[] result = new X509Certificate[ length ];
-        for ( int i = length - 1 ; i >= 0; i-- )
-        {
-            boolean isValid = ( i != 0 ); // first certificate needs to be expired!
-            result[ i ] = generateTestCertificate( i == 0 ? subjectCommonName : null, isValid, issuerKeyPair, subjectKeyPair, i );
-
-            // Further away from the root CA, each certificate is issued by the previous subject.
-            issuerKeyPair = subjectKeyPair;
-            subjectKeyPair = keyPairGenerator.generateKeyPair();
-        }
-
-        // Note that the issuerKeyPair now holds the subjectKeyPair that was used last! SubjectKeyPair now holds an unused value.
-        return new ResultHolder(issuerKeyPair, result);
+        return generateCertificateChainWithExpiredCertOnPosition(subjectCommonName, 0);
     }
 
     /**
@@ -191,27 +153,7 @@ public class KeystoreTestUtils
      */
     public static ResultHolder generateCertificateChainWithExpiredIntermediateCert(@Nullable final String subjectCommonName) throws Exception
     {
-        int length = 4;
-        final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance( KEY_ALGORITHM );
-        keyPairGenerator.initialize( KEY_SIZE );
-
-        // Root certificate (representing the CA) is self-signed.
-        KeyPair subjectKeyPair = keyPairGenerator.generateKeyPair();
-        KeyPair issuerKeyPair = subjectKeyPair;
-
-        final X509Certificate[] result = new X509Certificate[ length ];
-        for ( int i = length - 1 ; i >= 0; i-- )
-        {
-            boolean isValid = ( i != 1 ); // second certificate needs to be expired!
-            result[ i ] = generateTestCertificate( i == 0 ? subjectCommonName : null, isValid, issuerKeyPair, subjectKeyPair, i );
-
-            // Further away from the root CA, each certificate is issued by the previous subject.
-            issuerKeyPair = subjectKeyPair;
-            subjectKeyPair = keyPairGenerator.generateKeyPair();
-        }
-
-        // Note that the issuerKeyPair now holds the subjectKeyPair that was used last! SubjectKeyPair now holds an unused value.
-        return new ResultHolder(issuerKeyPair, result);
+        return generateCertificateChainWithExpiredCertOnPosition(subjectCommonName, 1);
     }
 
     /**
@@ -233,7 +175,19 @@ public class KeystoreTestUtils
      */
     public static ResultHolder generateCertificateChainWithExpiredRootCert(@Nullable final String subjectCommonName) throws Exception
     {
-        int length = 4;
+        return generateCertificateChainWithExpiredCertOnPosition(subjectCommonName, CHAIN_LENGTH - 1);
+    }
+
+    /**
+     * Generates a chain of certificates, identical to {@link #generateValidCertificateChain()}, with one exception:
+     * one certificate in the chain (identified by its number in the chain, provided by the second argument) is expired.
+     *
+     * @param subjectCommonName The CN value to use in the end-entity certificate.
+     * @param certificateInChainThatIsExpired certificate position in chain that is expired (zero-based).
+     * @return an array of certificates. Never null, never an empty array.
+     */
+    private static ResultHolder generateCertificateChainWithExpiredCertOnPosition(@Nullable final String subjectCommonName, final int certificateInChainThatIsExpired) throws Exception
+    {
         final KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance( KEY_ALGORITHM );
         keyPairGenerator.initialize( KEY_SIZE );
 
@@ -241,10 +195,10 @@ public class KeystoreTestUtils
         KeyPair subjectKeyPair = keyPairGenerator.generateKeyPair();
         KeyPair issuerKeyPair = subjectKeyPair;
 
-        final X509Certificate[] result = new X509Certificate[ length ];
-        for ( int i = length - 1 ; i >= 0; i-- )
+        final X509Certificate[] result = new X509Certificate[ CHAIN_LENGTH ];
+        for ( int i = CHAIN_LENGTH - 1 ; i >= 0; i-- )
         {
-            boolean isValid = ( i != length - 1 ); // root certificate needs to be expired!
+            boolean isValid = ( i != certificateInChainThatIsExpired ); // one certificate needs to be expired!
             result[ i ] = generateTestCertificate( i == 0 ? subjectCommonName : null, isValid, issuerKeyPair, subjectKeyPair, i );
 
             // Further away from the root CA, each certificate is issued by the previous subject.
