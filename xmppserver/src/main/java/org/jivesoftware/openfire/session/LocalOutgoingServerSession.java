@@ -469,6 +469,13 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
                 throw e;
             }
             log.debug( "TLS negotiation was successful. Connection encrypted. Proceeding with authentication..." );
+
+            // If TLS cannot be used for authentication, it is permissible to use another authentication mechanism
+            // such as dialback. RFC 6120 does not explicitly allow this, as it does not take into account any other
+            // authentication mechanism other than TLS (it does mention dialback in an interoperability note. However,
+            // RFC 7590 Section 3.4 writes: "In particular for XMPP server-to-server interactions, it can be reasonable
+            // for XMPP server implementations to accept encrypted but unauthenticated connections when Server Dialback
+            // keys [XEP-0220] are used." In short: if Dialback is allowed, unauthenticated TLS is better than no TLS.
             if (!SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), domainPair.getRemote(), true)) {
                 if (ServerDialback.isEnabled() || ServerDialback.isEnabledForSelfSigned()) {
                     log.debug( "SASL authentication failed. Will continue with dialback." );

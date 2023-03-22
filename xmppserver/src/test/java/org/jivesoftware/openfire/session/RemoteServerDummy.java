@@ -288,7 +288,7 @@ public class RemoteServerDummy implements AutoCloseable
                     processingService.submit(new SocketProcessor(socket));
                 } catch (Throwable t) {
                     // Log exception only when not cleanly closed.
-                    if (!acceptThread.isInterrupted()) {
+                    if (acceptThread != null && !acceptThread.isInterrupted()) {
                         t.printStackTrace();
                     } else {
                         break;
@@ -317,7 +317,7 @@ public class RemoteServerDummy implements AutoCloseable
 
         public synchronized void send(final String data) throws IOException
         {
-            System.out.println("# send");
+            System.out.println("# send to Openfire");
             System.out.println(data);
             System.out.println();
             os.write(data.getBytes());
@@ -339,7 +339,7 @@ public class RemoteServerDummy implements AutoCloseable
                         read = read.replaceFirst(" ", " xmlns:db=\"jabber:server:dialback\" ");
                         System.out.println("# recv (Hacked inbound stanza to include Dialback namespace declaration)");
                     } else {
-                        System.out.println("# recv");
+                        System.out.println("# recv from Openfire");
                     }
                     System.out.println(read);
                     System.out.println();
