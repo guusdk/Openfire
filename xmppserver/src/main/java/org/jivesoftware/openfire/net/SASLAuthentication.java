@@ -26,6 +26,7 @@ import org.jivesoftware.openfire.XMPPServerInfo;
 import org.jivesoftware.openfire.auth.AuthFactory;
 import org.jivesoftware.openfire.auth.AuthToken;
 import org.jivesoftware.openfire.keystore.CertificateStoreManager;
+import org.jivesoftware.openfire.keystore.CertificateUtils;
 import org.jivesoftware.openfire.keystore.TrustStore;
 import org.jivesoftware.openfire.lockout.LockOutManager;
 import org.jivesoftware.openfire.sasl.AnonymousSaslServer;
@@ -42,9 +43,10 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
 import java.security.Security;
-import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
+import java.security.cert.*;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -452,6 +454,43 @@ public class SASLAuthentication {
         final CertificateStoreManager certificateStoreManager = XMPPServer.getInstance().getCertificateStoreManager();
         final ConnectionType connectionType = isS2S ? ConnectionType.SOCKET_S2S : ConnectionType.SOCKET_C2S;
         final TrustStore trustStore = certificateStoreManager.getTrustStore( connectionType );
+        if (chain.length == 1 && chain[0] instanceof X509Certificate) {
+            final X509Certificate cert = (X509Certificate) chain[0];
+            final boolean isSelfSigned = CertificateManager.isSelfSignedCertificate(cert);
+            final boolean acceptSelfSigned;
+            if (isS2S) {
+                acceptSelfSigned = JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ACCEPT_SELFSIGNED_CERTS, false);
+            } else {
+                acceptSelfSigned = false;
+            }
+            if (isSelfSigned && acceptSelfSigned) {
+                // TODO unsure if these validation checks should go here, but for self-signed certificates, they're no performed elsewhere.
+                // TODO add other checks (like revocation). Align these with what happens in trustStore.getEndEntityCertificate(). There's an argument to be made that this should all be folded in something like 'verifyCertificate()' that currently only checks the domain name part.
+                try {
+                    cert.checkValidity();
+
+                    final Set<TrustAnchor> trustAnchors = Set.of(new TrustAnchor(cert, null));
+                    final X509CertSelector selector = new X509CertSelector();
+                    selector.setCertificate( cert );
+                    final PKIXBuilderParameters params = new PKIXBuilderParameters(trustAnchors, selector );
+                    params.setDate( new Date() );
+                    params.setRevocationEnabled( false );
+
+                    final CertPathBuilder pathBuilder = CertPathBuilder.getInstance( CertPathBuilder.getDefaultType() );
+                    final CertPath cp = pathBuilder.build( params ).getCertPath();
+
+                    final CertPathValidator pathValidator = CertPathValidator.getInstance( "PKIX" );
+                    pathValidator.validate( cp, params );
+
+                    if (cp.getCertificates().isEmpty()) {
+                        return false;
+                    }
+                } catch (CertificateNotYetValidException | CertificateExpiredException | CertPathValidatorException | NoSuchAlgorithmException | CertPathBuilderException | InvalidAlgorithmParameterException e) {
+                    return false;
+                }
+                return verifyCertificate(cert, hostname);
+            }
+        }
         final X509Certificate trusted = trustStore.getEndEntityCertificate( chain );
         if (trusted != null) {
             return verifyCertificate(trusted, hostname);

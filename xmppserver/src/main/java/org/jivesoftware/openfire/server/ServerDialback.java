@@ -138,7 +138,7 @@ public class ServerDialback {
      * certificate.
      */
     public static boolean isEnabledForSelfSigned() {
-        return JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ACCEPT_SELFSIGNED_CERTS, false);
+        return isEnabled() && JiveGlobals.getBooleanProperty(ConnectionSettings.Server.TLS_ACCEPT_SELFSIGNED_CERTS, false);
     }
 
     /**

@@ -542,7 +542,8 @@ public class LocalOutgoingServerSession extends LocalServerSession implements Ou
         LocalOutgoingServerSession result = null;
 
         // first, try SASL
-        if (saslEXTERNALoffered) {
+        final boolean trustPeerCerts = SASLAuthentication.verifyCertificates(connection.getPeerCertificates(), domainPair.getRemote(), true);
+        if (trustPeerCerts && saslEXTERNALoffered) {
             log.debug( "Trying to authenticate with EXTERNAL SASL." );
             result = attemptSASLexternal(connection, xpp, reader, domainPair, id, openingStream);
             if (result == null) {
