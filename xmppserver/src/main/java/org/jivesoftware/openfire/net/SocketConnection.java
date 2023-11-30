@@ -24,6 +24,7 @@ import org.jivesoftware.openfire.session.IncomingServerSession;
 import org.jivesoftware.openfire.session.Session;
 import org.jivesoftware.openfire.spi.ConnectionConfiguration;
 import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.openfire.streammanagement.StreamManager;
 import org.jivesoftware.util.JiveGlobals;
 import org.jivesoftware.util.LocaleUtils;
 import org.slf4j.Logger;
@@ -408,6 +409,11 @@ public class SocketConnection extends AbstractConnection {
         if (state.compareAndSet(State.OPEN, State.CLOSED)) {
             
             if (session != null) {
+                if (error != null && StreamManager.FORMALLY_CLOSE_ON_SERVER_ERROR.getValue()) {
+                    // TODO When Openfire closes the stream (even without an error), it likely doesn't want it to be resumed (OF-2752)
+                    // When Openfire closes the stream with an error, it likely doesn't want it to be resumed (OF-2751)
+                    session.getStreamManager().formalClose();
+                }
                 session.setStatus(Session.STATUS_CLOSED);
             }
 

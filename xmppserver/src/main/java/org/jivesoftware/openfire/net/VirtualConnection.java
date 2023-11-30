@@ -18,6 +18,7 @@ package org.jivesoftware.openfire.net;
 
 import org.jivesoftware.openfire.PacketDeliverer;
 import org.jivesoftware.openfire.session.Session;
+import org.jivesoftware.openfire.streammanagement.StreamManager;
 import org.jivesoftware.util.LocaleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +139,11 @@ public abstract class VirtualConnection extends AbstractConnection
         if (state.compareAndSet(State.OPEN, State.CLOSED)) {
             
             if (session != null) {
+                if (error != null && StreamManager.FORMALLY_CLOSE_ON_SERVER_ERROR.getValue()) {
+                    // TODO When Openfire closes the stream (even without an error), it likely doesn't want it to be resumed (OF-2752)
+                    // When Openfire closes the stream with an error, it likely doesn't want it to be resumed (OF-2751)
+                    session.getStreamManager().formalClose();
+                }
                 session.setStatus(Session.Status.CLOSED);
             }
 

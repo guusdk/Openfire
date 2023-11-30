@@ -70,6 +70,19 @@ public class StreamManager {
         .setDynamic(true)
         .build();
 
+
+    /**
+     * Disable Stream Management for a session when the server closed that session with an error.
+     *
+     * @deprecated I'm fairly convinced that this needs not be configurable, but as we introduced it after we released the beta for 4.8.0, this configuration option has been put in place as a safety measure.
+     */
+    @Deprecated // Remove in or after Openfire 4.8.1
+    public static SystemProperty<Boolean> FORMALLY_CLOSE_ON_SERVER_ERROR = SystemProperty.Builder.ofType( Boolean.class )
+        .setKey("stream.management.close-on-server-error")
+        .setDefaultValue(true)
+        .setDynamic(true)
+        .build();
+
     private final Logger Log;
     private boolean resume = false;
     public static class UnackedPacket {
