@@ -288,10 +288,8 @@ public class LocalIncomingServerSession extends LocalServerSession implements In
         } catch (StreamErrorException e) {
             Log.info("Unable to validate domain '{}' (full stack trace is logged on debug level): {}", fromDomain, e.getStreamError().getText());
             Log.debug("Unable to validate domain '{}'", fromDomain, e);
-            getConnection().deliverRawText(e.getStreamError().toXML());
-
             // Close the underlying connection
-            getConnection().close();
+            getConnection().close(e.getStreamError());
         } catch (ServerDialbackErrorException e) {
             Log.debug( "Unable to validate domain '{}': (full stack trace is logged on debug level): {}", fromDomain, e.getError().getText());
             Log.debug("Unable to validate domain '{}'", fromDomain, e);

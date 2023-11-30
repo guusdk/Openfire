@@ -191,8 +191,7 @@ public class StreamManager {
                 if (h < 0) {
                     Log.warn( "Closing client session. Client sends negative value for SM 'h': {}, affected session: {}", h, session );
                     final StreamError error = new StreamError( StreamError.Condition.undefined_condition, "You acknowledged stanzas using a negative value (which is illegal). Your Ack h: " + h + ", our last unacknowledged stanza: " + (unacknowledgedServerStanzas.isEmpty() ? "(none)" : unacknowledgedServerStanzas.getLast().x) );
-                    session.deliverRawText( error.toXML() );
-                    session.close();
+                    session.close(error);
                     return;
                 }
                 String previd = element.attributeValue("previd");
@@ -518,8 +517,7 @@ public class StreamManager {
                 if (h < 0) {
                     Log.warn( "Closing client session. Client sends negative value for SM 'h': {}, affected session: {}", h, session );
                     final StreamError error = new StreamError( StreamError.Condition.undefined_condition, "You acknowledged stanzas using a negative value (which is illegal). Your Ack h: " + h + ", our last unacknowledged stanza: " + (unacknowledgedServerStanzas.isEmpty() ? "(none)" : unacknowledgedServerStanzas.getLast().x) );
-                    session.deliverRawText( error.toXML() );
-                    session.close();
+                    session.close(error);
                     return;
                 }
 
@@ -529,8 +527,7 @@ public class StreamManager {
                     if (!validateClientAcknowledgement(h)) {
                         Log.warn( "Closing client session. Client acknowledges stanzas that we didn't send! Client Ack h: {}, our last unacknowledged stanza: {}, affected session: {}", h, unacknowledgedServerStanzas.isEmpty() ? "(none)" : unacknowledgedServerStanzas.getLast().x, session );
                         final StreamError error = new StreamError( StreamError.Condition.undefined_condition, "You acknowledged stanzas that we didn't send. Your Ack h: " + h + ", our last unacknowledged stanza: " + (unacknowledgedServerStanzas.isEmpty() ? "(none)" : unacknowledgedServerStanzas.getLast().x) );
-                        session.deliverRawText( error.toXML() );
-                        session.close();
+                        session.close(error);
                         return;
                     }
 

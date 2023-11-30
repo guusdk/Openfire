@@ -23,8 +23,10 @@ import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.UnknownHostException;
 import java.security.cert.Certificate;
 import java.util.Date;
@@ -148,6 +150,22 @@ public interface Session extends RoutableChannelHandler {
      * Implementations should ensure that after invocation, the result of {@link #getStatus()} will be CLOSED.
      */
     void close();
+
+    /**
+     * Close this session including associated connection, optionally citing a
+     * stream error. The events for closing the session are:
+     * <ul>
+     *      <li>Set closing flag to prevent redundant shutdowns.
+     *      <li>Close the socket.
+     *      <li>Prevent Stream Resumption when an error was provided</li>
+     *      <li>Notify all listeners that the channel is shut down.
+     * </ul>
+     *
+     * Not all implementations use the same order of events.
+     *
+     * @param error If non-null, the end-stream tag will be preceded with this error.
+     */
+    void close(@Nullable final StreamError error);
 
     /**
      * Returns true if the connection/session is closed.

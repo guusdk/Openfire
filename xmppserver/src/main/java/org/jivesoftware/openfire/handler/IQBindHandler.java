@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008 Jive Software. All rights reserved.
+ * Copyright (C) 2005-2008 Jive Software, 2023 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,9 +129,7 @@ public class IQBindHandler extends IQHandler {
                     int conflictCount = oldSession.incrementConflictCount();
                     if (conflictCount > conflictLimit) {
                         Log.debug( "Kick out an old connection that is conflicting with a new one. Old session: {}", oldSession );
-                        StreamError error = new StreamError(StreamError.Condition.conflict);
-                        oldSession.deliverRawText(error.toXML());
-                        oldSession.close(); // When living on a remote cluster node, this will prevent that session from becoming 'resumable'.
+                        oldSession.close(new StreamError(StreamError.Condition.conflict)); // When living on a remote cluster node, this will prevent that session from becoming 'resumable'.
 
                         // OF-1923: As the session is now replaced, the old session will never be resumed.
                         if ( oldSession instanceof LocalClientSession ) {

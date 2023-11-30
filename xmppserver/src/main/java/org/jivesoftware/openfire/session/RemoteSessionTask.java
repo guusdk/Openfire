@@ -16,7 +16,6 @@
 
 package org.jivesoftware.openfire.session;
 
-import org.jivesoftware.util.TaskEngine;
 import org.jivesoftware.util.cache.ClusterTask;
 import org.jivesoftware.util.cache.ExternalizableUtil;
 import org.slf4j.Logger;
@@ -26,8 +25,6 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.net.UnknownHostException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Operations to be executed in a remote session hosted in a remote cluster node.
@@ -84,32 +81,6 @@ public abstract class RemoteSessionTask implements ClusterTask<Object> {
         else if (operation == Operation.getSoftwareVersion) {
             result = getSession().getSoftwareVersion();
         }
-        else if (operation == Operation.close) {
-            // Run in another thread so we avoid blocking calls (in hazelcast) 
-            final Session session = getSession();
-            if (session != null) {
-                final Future<?> future = TaskEngine.getInstance().submit( () -> {
-                    try {
-                        if (session instanceof LocalSession) {
-                            // OF-2311: If closed by another cluster node, chances are that the session needs to be closed forcibly.
-                            // Chances of the session being resumed are neglectable, while retaining the session in a detached state
-                            // causes problems (eg: IQBindHandler could have re-issued the resource to a replacement session).
-                            ((LocalSession) session).getStreamManager().formalClose();
-                        }
-                        session.close();
-                    } catch (Exception e) {
-                        Log.info("An exception was logged while closing session: {}", session, e);
-                    }
-                });
-                // Wait until the close operation is done or timeout is met
-                try {
-                    future.get(15, TimeUnit.SECONDS);
-                }
-                catch (Exception e) {
-                    Log.info("An exception was logged while executing RemoteSessionTask to close session: {}", session, e);
-                }
-            }
-        }
         else if (operation == Operation.isClosed) {
             result = getSession().isClosed();
         }
@@ -162,7 +133,6 @@ public abstract class RemoteSessionTask implements ClusterTask<Object> {
         getCipherSuiteName,
         getPeerCertificates,
         getSoftwareVersion,
-        close,
         isClosed,
         @Deprecated isSecure, // Replaced with 'isEncrypted', replace in Openfire 4.9 or later.
         isEncrypted,

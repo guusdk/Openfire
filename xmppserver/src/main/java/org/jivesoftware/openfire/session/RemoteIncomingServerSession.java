@@ -20,7 +20,9 @@ import org.jivesoftware.openfire.StreamID;
 import org.jivesoftware.util.cache.ClusterTask;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
 
+import javax.annotation.Nullable;
 import java.util.Collection;
 
 /**
@@ -80,6 +82,9 @@ public class RemoteIncomingServerSession extends RemoteSession implements Incomi
         return new DeliverRawTextTask(streamID, text);
     }
 
+    ClusterTask getSessionCloseTask(@Nullable final StreamError error) {
+        return new SessionCloseTask(streamID, error);
+    }
     ClusterTask getProcessPacketTask(Packet packet) {
         return new ProcessPacketTask(streamID, packet);
     }

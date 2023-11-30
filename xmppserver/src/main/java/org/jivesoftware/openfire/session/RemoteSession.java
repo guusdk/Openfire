@@ -23,7 +23,9 @@ import org.jivesoftware.util.cache.CacheFactory;
 import org.jivesoftware.util.cache.ClusterTask;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
 
+import javax.annotation.Nullable;
 import java.net.UnknownHostException;
 import java.security.cert.Certificate;
 import java.util.Date;
@@ -140,7 +142,12 @@ public abstract class RemoteSession implements Session {
     }
 
     public void close() {
-        doSynchronousClusterTask(getRemoteSessionTask(RemoteSessionTask.Operation.close));
+        doSynchronousClusterTask(getSessionCloseTask(null));
+    }
+
+    @Override
+    public void close(@Nullable final StreamError error) {
+        doSynchronousClusterTask(getSessionCloseTask(error));
     }
 
     public boolean isClosed() {
@@ -189,6 +196,7 @@ public abstract class RemoteSession implements Session {
     abstract RemoteSessionTask getRemoteSessionTask(RemoteSessionTask.Operation operation);
     abstract ClusterTask getDeliverRawTextTask(String text);
     abstract ClusterTask getProcessPacketTask(Packet packet);
+    abstract ClusterTask getSessionCloseTask(StreamError error);
 
     /**
      * Invokes a task on the remote cluster member synchronously and returns the result of

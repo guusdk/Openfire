@@ -20,8 +20,10 @@ import org.jivesoftware.util.cache.ClusterTask;
 import org.jivesoftware.util.cache.ExternalizableUtil;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -84,6 +86,10 @@ public class RemoteOutgoingServerSession extends RemoteSession implements Outgoi
     @Override
     ClusterTask getDeliverRawTextTask(String text) {
         return new DeliverRawTextServerTask(pair, text);
+    }
+
+    ClusterTask getSessionCloseTask(@Nullable final StreamError error) {
+        return new SessionCloseTask(pair, error);
     }
 
     @Override

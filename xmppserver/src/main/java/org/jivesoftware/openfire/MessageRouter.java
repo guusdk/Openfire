@@ -157,7 +157,7 @@ public class MessageRouter extends BasicModule {
             }
             else if (SessionPacketRouter.isInvalidStanzaSentPriorToResourceBinding(packet, session)) {
                 log.debug("Closing session that attempts to send stanza to an entity other than the server itself or the client's account, before completing resource binding. Session closed: {}", session);
-                session.deliverRawText(new StreamError(StreamError.Condition.not_authorized).toXML());
+                session.close(new StreamError(StreamError.Condition.not_authorized));
                 return;
             }
             else {

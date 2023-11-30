@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008 Jive Software, 2022 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2005-2008 Jive Software, 2022-2023 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,11 +171,12 @@ public interface Connection extends Closeable {
     void close();
 
     /**
-     * Close this session including associated socket connection, optionally citing a
+     * Close this connection including associated session, optionally citing a
      * stream error. The events for closing the session are:
      * <ul>
      *      <li>Set closing flag to prevent redundant shutdowns.
      *      <li>Close the socket.
+     *      <li>Prevent Stream Resumption when an error was provided</li>
      *      <li>Notify all listeners that the channel is shut down.
      * </ul>
      *

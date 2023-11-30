@@ -480,6 +480,12 @@ public abstract class LocalSession implements Session {
     }
 
     @Override
+    public void close(@Nullable final StreamError error) {
+        Optional.ofNullable(conn)
+            .ifPresent(connection -> connection.close(error));
+    }
+
+    @Override
     public boolean validate() {
         return Optional.ofNullable(conn)
                 .map(Connection::validate)

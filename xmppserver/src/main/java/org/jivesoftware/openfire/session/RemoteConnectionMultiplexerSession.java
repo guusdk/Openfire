@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2009 Jive Software. All rights reserved.
+ * Copyright (C) 2007-2009 Jive Software, 2023 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,9 @@ package org.jivesoftware.openfire.session;
 import org.jivesoftware.util.cache.ClusterTask;
 import org.xmpp.packet.JID;
 import org.xmpp.packet.Packet;
+import org.xmpp.packet.StreamError;
+
+import javax.annotation.Nullable;
 
 /**
  * Surrogate for connection manager sessions hosted in some remote cluster node.
@@ -41,5 +44,9 @@ public class RemoteConnectionMultiplexerSession extends RemoteSession implements
 
     ClusterTask getProcessPacketTask(Packet packet) {
         return new ProcessPacketTask(this, address, packet);
+    }
+
+    ClusterTask getSessionCloseTask(@Nullable final StreamError error) {
+        return new SessionCloseTask(this, address, error);
     }
 }

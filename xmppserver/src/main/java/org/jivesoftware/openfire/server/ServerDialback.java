@@ -277,11 +277,8 @@ public class ServerDialback {
             }
             else {
                 log.debug("Error! Invalid namespace in packet: '{}'. Closing connection.", xpp.getText() );
-                // Send an invalid-namespace stream error condition in the response
-                connection.deliverRawText(
-                        new StreamError(StreamError.Condition.invalid_namespace).toXML());
-                // Close the connection
-                connection.close();
+                // Send an invalid-namespace stream error condition in the response and close the connection.
+                connection.close(new StreamError(StreamError.Condition.invalid_namespace));
             }
         }
         catch (Exception e) {

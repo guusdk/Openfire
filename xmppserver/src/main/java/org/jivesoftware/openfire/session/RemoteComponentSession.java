@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2009 Jive Software. All rights reserved.
+ * Copyright (C) 2007-2009 Jive Software, 2023 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import org.xmpp.component.ComponentException;
 import org.xmpp.component.ComponentManager;
 import org.xmpp.packet.*;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -61,6 +62,10 @@ public class RemoteComponentSession extends RemoteSession implements ComponentSe
 
     ClusterTask getProcessPacketTask(Packet packet) {
         return new ProcessPacketTask(this, address, packet);
+    }
+
+    ClusterTask getSessionCloseTask(@Nullable final StreamError error) {
+        return new SessionCloseTask(this, address, error);
     }
 
     private class RemoteExternalComponent implements ExternalComponent {
