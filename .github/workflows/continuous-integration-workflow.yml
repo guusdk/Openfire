@@ -328,7 +328,7 @@ jobs:
       - name: Build & run database tester
         run: |
           pushd ./build/ci/updater
-          ./mvnw -B clean package exec:java
+          ./mvnw -B clean package exec:java -Dexec.args="$GITHUB_WORKSPACE/distribution/target/distribution-base/"
 
 
   hsqldb-upgrade:
@@ -373,7 +373,7 @@ jobs:
       - name: Build & run database tester
         run: |
           pushd ./build/ci/updater
-          ./mvnw -B clean package exec:java
+          ./mvnw -B clean package exec:java -Dexec.args="$GITHUB_WORKSPACE/distribution/target/distribution-base/"
 
 
   sqlserver-install:
