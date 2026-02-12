@@ -16,6 +16,9 @@
 package org.jivesoftware.openfire.ratelimit;
 
 import org.jivesoftware.openfire.spi.ConnectionType;
+import org.jivesoftware.openfire.stats.Statistic;
+import org.jivesoftware.openfire.stats.StatisticsManager;
+import org.jivesoftware.openfire.stats.i18nStatistic;
 import org.jivesoftware.util.SystemProperty;
 import org.jivesoftware.util.TokenBucketRateLimiter;
 import org.slf4j.Logger;
@@ -168,7 +171,12 @@ public final class NewConnectionLimiterRegistry
             return S2S_LIMITER_REF.get();
         }
 
-        return UNSUPPORTED_LIMITERS.computeIfAbsent(type, t -> TokenBucketRateLimiter.unlimited());
+        // For unsupported types: create unlimited limiter and register statistics dynamically.
+        return UNSUPPORTED_LIMITERS.computeIfAbsent(type, t -> {
+            final TokenBucketRateLimiter unlimited = TokenBucketRateLimiter.unlimited();
+            registerLimiterStatistics(t);
+            return unlimited;
+        });
     }
 
     /**
@@ -176,11 +184,14 @@ public final class NewConnectionLimiterRegistry
      */
     private static void updateC2SLimiter()
     {
+        final TokenBucketRateLimiter rateLimiter;
         if (C2S_ENABLED.getValue()) {
-            C2S_LIMITER_REF.set(new TokenBucketRateLimiter(C2S_PERMITS_PER_SECOND.getValue(), C2S_MAX_BURST.getValue()));
+            rateLimiter = new TokenBucketRateLimiter(C2S_PERMITS_PER_SECOND.getValue(), C2S_MAX_BURST.getValue());
         } else {
-            C2S_LIMITER_REF.set(TokenBucketRateLimiter.unlimited());
+            rateLimiter = TokenBucketRateLimiter.unlimited();
         }
+        C2S_LIMITER_REF.set(rateLimiter);
+        registerLimiterStatistics(ConnectionType.SOCKET_C2S);
     }
 
     /**
@@ -188,11 +199,14 @@ public final class NewConnectionLimiterRegistry
      */
     private static void updateS2SLimiter()
     {
+        final TokenBucketRateLimiter rateLimiter;
         if (S2S_ENABLED.getValue()) {
-            S2S_LIMITER_REF.set(new TokenBucketRateLimiter(S2S_PERMITS_PER_SECOND.getValue(), S2S_MAX_BURST.getValue()));
+            rateLimiter = new TokenBucketRateLimiter(S2S_PERMITS_PER_SECOND.getValue(), S2S_MAX_BURST.getValue());
         } else {
-            S2S_LIMITER_REF.set(TokenBucketRateLimiter.unlimited());
+            rateLimiter = TokenBucketRateLimiter.unlimited();
         }
+        S2S_LIMITER_REF.set(rateLimiter);
+        registerLimiterStatistics(ConnectionType.SOCKET_S2S);
     }
 
     /**
@@ -221,6 +235,101 @@ public final class NewConnectionLimiterRegistry
                 Log.warn("New {} connection rejected due to rate limiting. This message will not be logged again for {} to prevent excessive log output.", type, interval);
             }
         }
+    }
+
+    /**
+     * Registers all metrics for a limiter dynamically, using localized names, descriptions, and units.
+     */
+    private static void registerLimiterStatistics(final ConnectionType type)
+    {
+        // Note: rather than passing the limiter and using that in the statistic, this implementation dynamically
+        //       gets the limiter from the registry. This allows the limiter to be updated dynamically. This in turn
+        //       prevents issues when the statistic is cached after first use (as done by the Monitoring plugin), which
+        //       causes the original limiter to be used instead of the updated one.
+        final StatisticsManager stats = StatisticsManager.getInstance();
+
+        // Explicit calls to remove older statistics shouldn't be needed: the new ones will overwrite any old ones.
+
+        // This statkey definition is replaced in newer versions of Openfire. This version is compatible with older versions
+        // of the Monitoring plugin, which has a 20-character limit (imposed by JRobin 1.7.1) for key names that are to be graphed.
+        final String statKeyPrefix;
+        switch (type) {
+            case SOCKET_C2S:
+                statKeyPrefix = "rl.con.c2s";
+                break;
+            case BOSH_C2S:
+                statKeyPrefix = "rl.con.bosh";
+                break;
+            case SOCKET_S2S:
+                statKeyPrefix = "rl.con.s2s";
+                break;
+            case WEBADMIN:
+                statKeyPrefix = "rl.con.adm";
+                break;
+            case COMPONENT:
+                statKeyPrefix = "rl.con.cmp";
+                break;
+            case CONNECTION_MANAGER:
+                statKeyPrefix = "rl.con.mgr";
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported connection type: " + type);
+        }
+
+        // Accepted connections
+        final String statKeyAccepted = statKeyPrefix + "accepted";
+        stats.removeStatistic(statKeyAccepted);
+        stats.addStatistic(statKeyAccepted,
+            new i18nStatistic("ratelimit.newconnections."+type.name().toLowerCase()+".accepted", Statistic.Type.count) {
+                @Override public double sample() { return getLimiter(type).getAcceptedEvents(); }
+                @Override public boolean isPartialSample() { return true; }
+            }
+        );
+
+        // Rejected connections
+        final String statKeyRejected = statKeyPrefix + "rejected";
+        stats.removeStatistic(statKeyRejected);
+        stats.addStatistic(statKeyRejected,
+            new i18nStatistic("ratelimit.newconnections."+type.name().toLowerCase()+".rejected", Statistic.Type.count) {
+                @Override public double sample() { return getLimiter(type).getRejectedEvents(); }
+                @Override public boolean isPartialSample() { return true; }
+            }
+        );
+
+// TODO: Decide whether this should be exposed. The value is easily calculated from the rejected and accepted counts. Is
+//       it worth cluttering the statistics with this?
+//        // Total connections
+//        stats.removeStatistic(statKeyPrefix + "total");
+//        stats.addStatistic(statKeyPrefix + "total",
+//            new i18nStatistic("ratelimit.newconnections."+type.name().toLowerCase()+".total", Statistic.Type.count) {
+//                @Override public double sample() { return getLimiter(type).getTotalEvents(); }
+//                @Override public boolean isPartialSample() { return true; }
+//            }
+//        );
+
+// TODO: Decide whether this should be exposed. The value may be misleading because the 'ratio' is always calculated
+//       from totals since the last rate-limiter reset. Over time, this causes the ratio to converge and lose usefulness,
+//       while users may reasonably expect it to reflect a recent time window. Since absolute 'accepted' and 'rejected'
+//       counts are already provided, consumers who need meaningful statistics can derive ratios for any period of
+//       interest themselves.
+//        // Acceptance ratio
+//        stats.removeStatistic(statKeyPrefix + "ratio");
+//        stats.addStatistic(statKeyPrefix + "ratio",
+//            new i18nStatistic("ratelimit.newconnections."+type.name().toLowerCase()+".ratio", Statistic.Type.count) {
+//                @Override public double sample() { return getLimiter(type).getAcceptanceRatio() * 100; }
+//                @Override public boolean isPartialSample() { return true; }
+//            }
+//        );
+
+        // Available tokens
+        final String statKeyTokens = statKeyPrefix + "tokens";
+        stats.removeStatistic(statKeyTokens);
+        stats.addStatistic(statKeyTokens,
+            new i18nStatistic("ratelimit.newconnections."+type.name().toLowerCase()+".tokens", Statistic.Type.count) {
+                @Override public double sample() { return getLimiter(type).getAvailableTokens(); }
+                @Override public boolean isPartialSample() { return true; }
+            }
+        );
     }
 
     private NewConnectionLimiterRegistry()
