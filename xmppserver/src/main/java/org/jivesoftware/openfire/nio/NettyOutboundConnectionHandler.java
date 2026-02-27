@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2023-2026 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ import java.time.Duration;
  * @author Matthew Vivian
  * @author Alex Gidman
  */
-public class NettyOutboundConnectionHandler extends NettyConnectionHandler {
+public class NettyOutboundConnectionHandler extends NettyConnectionHandler<RespondingServerStanzaHandler> {
     private static final Logger Log = LoggerFactory.getLogger(NettyOutboundConnectionHandler.class);
     private final DomainPair domainPair;
     private final int port;
@@ -69,7 +69,7 @@ public class NettyOutboundConnectionHandler extends NettyConnectionHandler {
     }
 
     @Override
-    StanzaHandler createStanzaHandler(NettyConnection connection) {
+    RespondingServerStanzaHandler createStanzaHandler(NettyConnection connection) {
         return new RespondingServerStanzaHandler( XMPPServer.getInstance().getPacketRouter(), connection, domainPair );
     }
 
