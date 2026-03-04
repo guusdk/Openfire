@@ -171,7 +171,11 @@ public class NettySessionInitializer {
                                     final NettyConnection connection = ctx.channel().attr(CONNECTION).get();
                                     if (!connection.isEncrypted()) {
                                         connection.startTLS(true, true);
-                                        ctx.channel().config().setAutoRead(true);
+                                        businessLogicHandler.getStanzaHandlerFuture().thenRun(() ->
+                                            ctx.channel().eventLoop().execute(() ->
+                                                ctx.channel().config().setAutoRead(true)
+                                            )
+                                        );
                                     }
                                     return; // Do not propagate channelActive - userEventTriggered will fire it after TLS handshake completes.
                                 }
@@ -183,7 +187,11 @@ public class NettySessionInitializer {
                             }
 
                             // Non-DirectTLS: safe to enable autoRead and propagate channelActive immediately.
-                            ctx.channel().config().setAutoRead(true);
+                            businessLogicHandler.getStanzaHandlerFuture().thenRun(() ->
+                                ctx.channel().eventLoop().execute(() ->
+                                    ctx.channel().config().setAutoRead(true)
+                                )
+                            );
                             ctx.fireChannelActive();
                         }
                     });
