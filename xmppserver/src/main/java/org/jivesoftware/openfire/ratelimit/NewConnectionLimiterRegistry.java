@@ -66,6 +66,7 @@ public final class NewConnectionLimiterRegistry
     public static final SystemProperty<Integer> C2S_PERMITS_PER_SECOND = SystemProperty.Builder.ofType(Integer.class)
         .setKey("xmpp.ratelimit.newconnections.c2s.permits_per_second")
         .setDefaultValue(20)
+        .setMinValue(1)
         .setDynamic(true)
         .addListener(newValue -> updateC2SLimiter())
         .build();
@@ -76,6 +77,7 @@ public final class NewConnectionLimiterRegistry
     public static final SystemProperty<Integer> C2S_MAX_BURST = SystemProperty.Builder.ofType(Integer.class)
         .setKey("xmpp.ratelimit.newconnections.c2s.max_burst")
         .setDefaultValue(50)
+        .setMinValue(1)
         .setDynamic(true)
         .addListener(newValue -> updateC2SLimiter())
         .build();
@@ -96,6 +98,7 @@ public final class NewConnectionLimiterRegistry
     public static final SystemProperty<Integer> S2S_PERMITS_PER_SECOND = SystemProperty.Builder.ofType(Integer.class)
         .setKey("xmpp.ratelimit.newconnections.s2s.permits_per_second")
         .setDefaultValue(20)
+        .setMinValue(1)
         .setDynamic(true)
         .addListener(newValue -> updateS2SLimiter())
         .build();
@@ -106,6 +109,7 @@ public final class NewConnectionLimiterRegistry
     public static final SystemProperty<Integer> S2S_MAX_BURST = SystemProperty.Builder.ofType(Integer.class)
         .setKey("xmpp.ratelimit.newconnections.s2s.max_burst")
         .setDefaultValue(50)
+        .setMinValue(1)
         .setDynamic(true)
         .addListener(newValue -> updateS2SLimiter())
         .build();

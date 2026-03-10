@@ -62,8 +62,10 @@ public class NewConnectionLimiterRegistryTest {
         XMPPServer.setInstance(xmppServer);
 
         // Setup test fixture.
+        NewConnectionLimiterRegistry.C2S_ENABLED.setValue(true);
         NewConnectionLimiterRegistry.C2S_PERMITS_PER_SECOND.setValue(20);
         NewConnectionLimiterRegistry.C2S_MAX_BURST.setValue(50);
+        NewConnectionLimiterRegistry.S2S_ENABLED.setValue(true);
         NewConnectionLimiterRegistry.S2S_PERMITS_PER_SECOND.setValue(20);
         NewConnectionLimiterRegistry.S2S_MAX_BURST.setValue(50);
         // Force limiters to reload
