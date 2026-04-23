@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Surevine Ltd, 2016-2020 Ignite Realtime Foundation. All rights reserved
+ * Copyright (C) 2015 Surevine Ltd, 2016-2026 Ignite Realtime Foundation. All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,19 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.xml.bind.DatatypeConverter;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.jivesoftware.openfire.auth.AuthFactory;
 import org.jivesoftware.openfire.auth.ConnectionException;
 import org.jivesoftware.openfire.auth.InternalUnauthenticatedException;
 import org.jivesoftware.openfire.auth.ScramUtils;
 import org.jivesoftware.openfire.user.UserNotFoundException;
+import org.jivesoftware.util.StringUtils;
 import org.jivesoftware.util.SystemProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +48,26 @@ import org.slf4j.LoggerFactory;
  * @author Richard Midwinter
  */
 public class ScramSha1SaslServer implements SaslServer {
+
+    /**
+     * A server-sided secret used for salt derivation of non-existing users when SCRAM-SHA-1 (-PLUS) is used. This is
+     * used to guard against enumeration attacks.
+     *
+     * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
+     */
+    static final SystemProperty<String> SERVER_SECRET_NONEXISTING_USERS = SystemProperty.Builder.ofType(String.class)
+        .setKey("sasl.scram-sha-1.server-secret.nonexisting-users")
+        .setEncrypted(true)
+        .setDynamic(Boolean.TRUE)
+        .build();
+
+    static {
+        // OF-3258: Ensure a consistent but unpredictable server secret is available.
+        if (SERVER_SECRET_NONEXISTING_USERS.getValue() == null) {
+            SERVER_SECRET_NONEXISTING_USERS.setValue(StringUtils.randomString(29));
+        }
+    }
+
     public static final SystemProperty<Integer> ITERATION_COUNT = SystemProperty.Builder.ofType(Integer.class)
         .setKey("sasl.scram-sha-1.iteration-count")
         .setDefaultValue(ScramUtils.DEFAULT_ITERATION_COUNT)
@@ -155,7 +178,7 @@ public class ScramSha1SaslServer implements SaslServer {
         String clientNonce = m.group(7);
         nonce = clientNonce + UUID.randomUUID().toString();
 
-        serverFirstMessage = String.format("r=%s,s=%s,i=%d", nonce, DatatypeConverter.printBase64Binary(getSalt(username)),
+        serverFirstMessage = String.format("r=%s,s=%s,i=%d", nonce, DatatypeConverter.printBase64Binary(getOrCreateSalt(username)),
                 getIterations(username));
         return serverFirstMessage.getBytes(StandardCharsets.UTF_8);
     }
@@ -209,7 +232,7 @@ public class ScramSha1SaslServer implements SaslServer {
         }
     }
 
-   /**
+    /**
       * Determines whether the authentication exchange has completed.
       * This method is typically called after each invocation of
       * {@code evaluateResponse()} to determine whether the
@@ -305,32 +328,100 @@ public class ScramSha1SaslServer implements SaslServer {
     }
     
     /**
-     * Retrieve the salt from the database for a given username.
-     * 
-     * Returns a random salt if the user doesn't exist to mimic an invalid password. 
+     * Retrieve the salt for a given username.
+     *
+     * When a salt does not currently exist for an existing user, but a password is set, that value is used to create
+     * and persist a new salt for that user.
+     *
+     * Returns a username-specific salt if the user doesn't exist to mimic an invalid password. This also guards against
+     * user enumeration attacks.
+     *
+     * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
      */
-    private byte[] getSalt(final String username) {
-        try {
-            String saltshaker = AuthFactory.getSalt(username);
-            byte[] salt;
-            if (saltshaker == null) {
-                Log.debug("No salt found, so resetting password.");
-                String password = AuthFactory.getPassword(username);
-                AuthFactory.setPassword(username, password);
-                salt = DatatypeConverter.parseBase64Binary(AuthFactory.getSalt(username));
-            } else {
-                salt = DatatypeConverter.parseBase64Binary(saltshaker);
+    @VisibleForTesting
+    byte[] getOrCreateSalt(final String username)
+    {
+        try
+        {
+            final String saltBase64 = AuthFactory.getSalt(username);
+            if (saltBase64 == null) {
+                return handleMissingSalt(username);
             }
-            return salt;
-        } catch (UserNotFoundException e) {
-            Log.debug("User '{}' not found. Cannot obtain its salt.", username, e);
-            // Return a random salt if the user doesn't exist to mimic an invalid password.
-            byte[] salt = new byte[24];
-            random.nextBytes(salt);
-            return salt;
-        } catch (UnsupportedOperationException | ConnectionException | InternalUnauthenticatedException e) {
-            Log.warn("Exception in SCRAM.getSalt() for user '{}':", username, e);
-            byte[] salt = new byte[24];
+
+            return decodeSalt(saltBase64);
+        }
+        catch (UserNotFoundException e)
+        {
+            Log.debug("User '{}' not found. Returning fake salt.", username, e);
+            return generateFakeSalt(username);
+        }
+        catch (UnsupportedOperationException | ConnectionException | InternalUnauthenticatedException e) {
+            Log.warn("Exception in SCRAM.getSalt() for user '{}'", username, e);
+            return generateFakeSalt(username);
+        }
+    }
+
+    /**
+     * When no salt is found for the user, but a (plain-text) password is available, we can generate a salt by updating
+     * the password to the same value (this should trigger a re-hashing of the password).
+     *
+     * @param username The user for whom to generate a salt
+     * @return A salt
+     * @throws UserNotFoundException when the password could not be loaded for this user.
+     * @throws InternalUnauthenticatedException when there's an authentication issue with connecting to the user-provider
+     * @throws ConnectionException when there's an issue with connecting to the user-provider
+     * @throws UnsupportedOperationException when a plain-text password cannot be retrieved for this user.
+     */
+    private byte[] handleMissingSalt(String username) throws UserNotFoundException, InternalUnauthenticatedException, ConnectionException, UnsupportedOperationException
+    {
+        Log.debug("No salt found for '{}', regenerating.", username);
+
+        final String password = AuthFactory.getPassword(username);
+        AuthFactory.setPassword(username, password);
+
+        final String newSalt = AuthFactory.getSalt(username);
+        if (newSalt == null) {
+            Log.debug("Salt regeneration failed for '{}'", username);
+            return generateFakeSalt(username);
+        }
+        return decodeSalt(newSalt);
+    }
+
+    /**
+     * Decode a base64-encoded salt.
+     *
+     * @param base64Salt The base64-encoded salt to decode
+     * @return The decoded salt as a byte array
+     */
+    private byte[] decodeSalt(@Nonnull final String base64Salt)
+    {
+        return DatatypeConverter.parseBase64Binary(base64Salt);
+    }
+
+    /**
+     * Generate a fake salt to guard against user enumeration attacks (see OF-3258).
+     *
+     * The returned salt is a deterministic but cryptographically unpredictable value derived from the username and a
+     * server-side secret.
+     *
+     * @param username The username for which to generate a fake salt
+     * @return a fake salt.
+     * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
+     */
+    private byte[] generateFakeSalt(String username)
+    {
+        try
+        {
+            final String secret = SERVER_SECRET_NONEXISTING_USERS.getValue();
+            return ScramUtils.computeHmac(
+                secret.getBytes(StandardCharsets.UTF_8),
+                "fake-salt-for-" + username
+            );
+        }
+        catch (SaslException e)
+        {
+            // Give up trying to be deterministic. Return a random salt.
+            final byte[] salt = new byte[24];
             random.nextBytes(salt);
             return salt;
         }
