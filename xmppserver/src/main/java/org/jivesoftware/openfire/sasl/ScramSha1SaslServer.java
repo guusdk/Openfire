@@ -73,7 +73,8 @@ public class ScramSha1SaslServer implements SaslServer {
 
     static {
         // OF-3258: Ensure a consistent but unpredictable server secret is available.
-        if (SERVER_SECRET_NONEXISTENT_USERS.getValue() == null) {
+        final String serverSecret = SERVER_SECRET_NONEXISTENT_USERS.getValue();
+        if (serverSecret == null || serverSecret.trim().isEmpty()) {
             SERVER_SECRET_NONEXISTENT_USERS.setValue(StringUtils.randomString(29));
         }
     }
