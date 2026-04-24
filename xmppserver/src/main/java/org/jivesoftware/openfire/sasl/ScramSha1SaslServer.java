@@ -51,7 +51,25 @@ import org.slf4j.LoggerFactory;
 public class ScramSha1SaslServer implements SaslServer {
 
     /**
-     * A server-side secret used when handling authentication attempts for non-existing users in SCRAM-SHA-1 (-PLUS).
+     * Stores a server-side secret used when handling authentication attempts for non-existing users in SCRAM-SHA-1 (-PLUS).
+     *
+     * Prefer to use #getInitializedServerSecretForNonExistentUsers() instead of accessing this property directly, as
+     * the method will make sure that the one-time initialization that's required for usage will occur.
+     *
+     * @see #getServerSecretForNonExistentUsers()
+     */
+    @VisibleForTesting
+    static final SystemProperty<String> SERVER_SECRET_NONEXISTENT_USERS = SystemProperty.Builder.ofType(String.class)
+        .setKey("sasl.scram-sha-1.server-secret.nonexistent-users")
+        .setEncrypted(true)
+        .setDynamic(Boolean.TRUE)
+        .build();
+
+    /**
+     * Retrieves a server-side secret used when handling authentication attempts for non-existing users in
+     * SCRAM-SHA-1 (-PLUS).
+     *
+     * This method ensures that the one-time initialization that is required for usage will occur.
      *
      * Instead of failing immediately, the server derives deterministic, fake SCRAM credentials (such as stored keys,
      * server keys, and where applicable salt values) based on this secret. This ensures that authentication processing
@@ -66,18 +84,14 @@ public class ScramSha1SaslServer implements SaslServer {
      *
      * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
      */
-    static final SystemProperty<String> SERVER_SECRET_NONEXISTENT_USERS = SystemProperty.Builder.ofType(String.class)
-        .setKey("sasl.scram-sha-1.server-secret.nonexistent-users")
-        .setEncrypted(true)
-        .setDynamic(Boolean.TRUE)
-        .build();
-
-    static {
+    public synchronized static String getServerSecretForNonExistentUsers()
+    {
         // OF-3258: Ensure a consistent but unpredictable server secret is available.
         final String serverSecret = SERVER_SECRET_NONEXISTENT_USERS.getValue();
         if (serverSecret == null || serverSecret.trim().isEmpty()) {
             SERVER_SECRET_NONEXISTENT_USERS.setValue(StringUtils.randomString(29));
         }
+        return SERVER_SECRET_NONEXISTENT_USERS.getValue();
     }
 
     public static final SystemProperty<Integer> ITERATION_COUNT = SystemProperty.Builder.ofType(Integer.class)
@@ -432,7 +446,7 @@ public class ScramSha1SaslServer implements SaslServer {
 
         try
         {
-            final byte[] key = SERVER_SECRET_NONEXISTENT_USERS.getValue().getBytes(StandardCharsets.UTF_8);
+            final byte[] key = getServerSecretForNonExistentUsers().getBytes(StandardCharsets.UTF_8);
             final byte[] result = new byte[length];
 
             int offset = 0;
