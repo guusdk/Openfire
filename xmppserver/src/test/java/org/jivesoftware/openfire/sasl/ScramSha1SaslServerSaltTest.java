@@ -46,6 +46,13 @@ public class ScramSha1SaslServerSaltTest
         Fixtures.disableDatabasePersistence();
     }
 
+    @AfterEach
+    public void resetProperty() throws Exception
+    {
+        // Prevent order-dependent failures by resetting the property after each test.
+        ScramSha1SaslServer.SERVER_SECRET_NONEXISTENT_USERS.setValue(null);
+    }
+
     /**
      * Set up mocks for each test.
      */
