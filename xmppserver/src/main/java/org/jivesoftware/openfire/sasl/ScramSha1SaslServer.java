@@ -50,8 +50,18 @@ import org.slf4j.LoggerFactory;
 public class ScramSha1SaslServer implements SaslServer {
 
     /**
-     * A server-sided secret used for salt derivation of non-existing users when SCRAM-SHA-1 (-PLUS) is used. This is
-     * used to guard against enumeration attacks.
+     * A server-side secret used when handling authentication attempts for non-existing users in SCRAM-SHA-1 (-PLUS).
+     *
+     * Instead of failing immediately, the server derives deterministic, fake SCRAM credentials (such as stored keys,
+     * server keys, and where applicable salt values) based on this secret. This ensures that authentication processing
+     * for non-existing users is indistinguishable from that of existing users.
+     *
+     * This mechanism helps protect against user enumeration attacks by preventing observable differences in behavior
+     * between existing and non-existing accounts.
+     *
+     * Changing (rotating) this value will cause different derived values to be generated for non-existing users.
+     * This does not affect authentication of existing users but can invalidate consistency of ongoing or repeated
+     * authentication attempts for non-existing users.
      *
      * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
      */
