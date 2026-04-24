@@ -142,8 +142,3 @@ public class ScramSha1SaslServerSaltTest
         assertArrayEquals(salt1, salt2, "Salt for real user should be consistent");
     }
 }
-
-
-
-
-
