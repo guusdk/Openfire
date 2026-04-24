@@ -118,7 +118,7 @@ public class ScramSha1SaslServerSaltTest
 
         // Execute system under test
         final byte[] salt1 = server.getOrCreateSalt(NON_EXISTENT_USER);
-        ScramSha1SaslServer.SERVER_SECRET_NONEXISTING_USERS.setValue("another-secret-0987654321");
+        ScramSha1SaslServer.SERVER_SECRET_NONEXISTENT_USERS.setValue("another-secret-0987654321");
         final byte[] salt2 = server.getOrCreateSalt(NON_EXISTENT_USER);
 
         // Verify result
