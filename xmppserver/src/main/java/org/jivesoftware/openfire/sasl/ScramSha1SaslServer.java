@@ -34,6 +34,7 @@ import javax.xml.bind.DatatypeConverter;
 import com.google.common.annotations.VisibleForTesting;
 import org.jivesoftware.openfire.auth.AuthFactory;
 import org.jivesoftware.openfire.auth.ConnectionException;
+import org.jivesoftware.openfire.auth.DefaultAuthProvider;
 import org.jivesoftware.openfire.auth.InternalUnauthenticatedException;
 import org.jivesoftware.openfire.auth.ScramUtils;
 import org.jivesoftware.openfire.user.UserNotFoundException;
@@ -419,26 +420,41 @@ public class ScramSha1SaslServer implements SaslServer {
      * Generate a fake salt to guard against user enumeration attacks (see OF-3258).
      *
      * The returned salt is a deterministic but cryptographically unpredictable value derived from the username and a
-     * server-side secret.
+     * server-side secret. The returned value is always exactly {@link DefaultAuthProvider#SALT_LENGTH} bytes long.
      *
      * @param username The username for which to generate a fake salt
-     * @return a fake salt.
+     * @return a fake salt of length {@link DefaultAuthProvider#SALT_LENGTH}.
      * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
      */
     private byte[] generateFakeSalt(String username)
     {
+        final int length = DefaultAuthProvider.SALT_LENGTH;
+
         try
         {
-            final String secret = SERVER_SECRET_NONEXISTENT_USERS.getValue();
-            return ScramUtils.computeHmac(
-                secret.getBytes(StandardCharsets.UTF_8),
-                "fake-salt-for-" + username
-            );
+            final byte[] key = SERVER_SECRET_NONEXISTENT_USERS.getValue().getBytes(StandardCharsets.UTF_8);
+            final byte[] result = new byte[length];
+
+            int offset = 0;
+            int counter = 0;
+
+            while (offset < length)
+            {
+                // Domain separation + counter to expand output deterministically
+                final byte[] block = ScramUtils.computeHmac(key, "fake-salt-for-" + username + ":" + counter);
+                final int toCopy = Math.min(block.length, length - offset);
+                System.arraycopy(block, 0, result, offset, toCopy);
+
+                offset += toCopy;
+                counter++;
+            }
+
+            return result;
         }
         catch (SaslException e)
         {
             // Give up trying to be deterministic. Return a random salt.
-            final byte[] salt = new byte[24];
+            final byte[] salt = new byte[length];
             random.nextBytes(salt);
             return salt;
         }

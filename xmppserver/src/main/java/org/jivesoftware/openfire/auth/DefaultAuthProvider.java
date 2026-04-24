@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2008 Jive Software, 2016-2019 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2004-2008 Jive Software, 2016-2026 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,11 @@ import org.slf4j.LoggerFactory;
  * @author Matt Tucker
  */
 public class DefaultAuthProvider implements AuthProvider {
+
+    /**
+     * The length of the salt used to generate salted passwords.
+     */
+    public static final int SALT_LENGTH = 24;
 
     private static final Logger Log = LoggerFactory.getLogger(DefaultAuthProvider.class);
 
@@ -319,7 +324,7 @@ public class DefaultAuthProvider implements AuthProvider {
         }
         
         // Store the salt and salted password so SCRAM-SHA-1 SASL auth can be used later.
-        byte[] saltShaker = new byte[24];
+        byte[] saltShaker = new byte[SALT_LENGTH];
         random.nextBytes(saltShaker);
         String salt = DatatypeConverter.printBase64Binary(saltShaker);
 
