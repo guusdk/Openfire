@@ -388,6 +388,12 @@ public class ScramSha1SaslServer implements SaslServer {
         Log.debug("No salt found for '{}', regenerating.", username);
 
         final String password = AuthFactory.getPassword(username);
+        if (password == null) {
+            // No password available. This is likely an issue with the provider, which should have thrown a
+            // UserNotFoundException or UnsupportedOperationException. Both of those will cause the same fallback
+            // handling, so this code can generate either to cause that same fallback behavior.
+            throw new UserNotFoundException("No password available for user '" + username + "'");
+        }
         AuthFactory.setPassword(username, password);
 
         final String newSalt = AuthFactory.getSalt(username);
