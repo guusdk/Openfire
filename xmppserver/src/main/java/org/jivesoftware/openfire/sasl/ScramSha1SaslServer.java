@@ -65,16 +65,16 @@ public class ScramSha1SaslServer implements SaslServer {
      *
      * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3258">OF-3258: Guard against user enumeration in ScramSha1SaslServer</a>
      */
-    static final SystemProperty<String> SERVER_SECRET_NONEXISTING_USERS = SystemProperty.Builder.ofType(String.class)
-        .setKey("sasl.scram-sha-1.server-secret.nonexisting-users")
+    static final SystemProperty<String> SERVER_SECRET_NONEXISTENT_USERS = SystemProperty.Builder.ofType(String.class)
+        .setKey("sasl.scram-sha-1.server-secret.nonexistent-users")
         .setEncrypted(true)
         .setDynamic(Boolean.TRUE)
         .build();
 
     static {
         // OF-3258: Ensure a consistent but unpredictable server secret is available.
-        if (SERVER_SECRET_NONEXISTING_USERS.getValue() == null) {
-            SERVER_SECRET_NONEXISTING_USERS.setValue(StringUtils.randomString(29));
+        if (SERVER_SECRET_NONEXISTENT_USERS.getValue() == null) {
+            SERVER_SECRET_NONEXISTENT_USERS.setValue(StringUtils.randomString(29));
         }
     }
 
@@ -422,7 +422,7 @@ public class ScramSha1SaslServer implements SaslServer {
     {
         try
         {
-            final String secret = SERVER_SECRET_NONEXISTING_USERS.getValue();
+            final String secret = SERVER_SECRET_NONEXISTENT_USERS.getValue();
             return ScramUtils.computeHmac(
                 secret.getBytes(StandardCharsets.UTF_8),
                 "fake-salt-for-" + username
