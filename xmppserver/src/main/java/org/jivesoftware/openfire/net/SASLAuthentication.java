@@ -284,7 +284,7 @@ public class SASLAuthentication {
                 }
 
                 // Channel binding would be a binding to TLS, thus encryption is required for channel binding.
-                if (!session.isEncrypted()) { // This aught to be redundant, as getSupportedChannelBindingTypes() will return an empty set if not encrypted.
+                if (!session.isEncrypted()) { // This ought to be redundant, as getSupportedChannelBindingTypes() will return an empty set if not encrypted.
                     continue;
                 }
             }
@@ -666,7 +666,7 @@ public class SASLAuthentication {
                     // Check if the user provider in use supports passwords retrieval. Access to the users passwords will be required by the CallbackHandler.
                     if ( !AuthFactory.supportsPasswordRetrieval() )
                     {
-                        Log.trace( "Cannot support '{}' as the AuthFactory that's in use does not support password retrieval.", mechanism );
+                        Log.trace( "Cannot support '{}' as the AuthProvider that's in use does not support password retrieval.", mechanism );
                         it.remove();
                     }
                     break;
@@ -675,7 +675,7 @@ public class SASLAuthentication {
                 case "SCRAM-SHA-1-PLUS":
                     if ( !AuthFactory.supportsScram() )
                     {
-                        Log.trace( "Cannot support '{}' as the AuthFactory that's in use does not support SCRAM.", mechanism );
+                        Log.trace( "Cannot support '{}' as the AuthProvider that's in use does not support SCRAM.", mechanism );
                         it.remove();
                     }
                     break;
