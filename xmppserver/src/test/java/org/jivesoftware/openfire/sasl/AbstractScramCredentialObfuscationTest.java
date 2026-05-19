@@ -216,8 +216,8 @@ public abstract class AbstractScramCredentialObfuscationTest
         final ScramSaslServer server = newServer();
 
         // Execute system under test
-        final byte[] salt1 = server.getOrCreateSalt(NON_EXISTENT_USER);
-        final byte[] salt2 = server.getOrCreateSalt(NON_EXISTENT_USER);
+        final byte[] salt1 = server.getOrFakeSalt(NON_EXISTENT_USER);
+        final byte[] salt2 = server.getOrFakeSalt(NON_EXISTENT_USER);
 
         // Verify result
         assertArrayEquals(salt1, salt2, "Fake salt for non-existent user should be deterministic");
@@ -233,8 +233,8 @@ public abstract class AbstractScramCredentialObfuscationTest
         final ScramSaslServer server = newServer();
 
         // Execute system under test
-        final byte[] fakeSalt = server.getOrCreateSalt(NON_EXISTENT_USER);
-        final byte[] realSalt = server.getOrCreateSalt(EXISTENT_USER);
+        final byte[] fakeSalt = server.getOrFakeSalt(NON_EXISTENT_USER);
+        final byte[] realSalt = server.getOrFakeSalt(EXISTENT_USER);
 
         // Verify result
         assertArrayNotEquals(fakeSalt, realSalt, "Fake salt for non-existent user should not match real user salt");
@@ -251,9 +251,9 @@ public abstract class AbstractScramCredentialObfuscationTest
 
         // Execute system under test
         serverSecretProperty().setValue(SERVER_SECRET_1);
-        final byte[] salt1 = server.getOrCreateSalt(NON_EXISTENT_USER);
+        final byte[] salt1 = server.getOrFakeSalt(NON_EXISTENT_USER);
         serverSecretProperty().setValue(SERVER_SECRET_2);
-        final byte[] salt2 = server.getOrCreateSalt(NON_EXISTENT_USER);
+        final byte[] salt2 = server.getOrFakeSalt(NON_EXISTENT_USER);
 
         // Verify result
         assertArrayNotEquals(salt1, salt2, "Fake salt should change when server secret changes");
@@ -269,8 +269,8 @@ public abstract class AbstractScramCredentialObfuscationTest
         final ScramSaslServer server = newServer();
 
         // Execute system under test
-        final byte[] salt1 = server.getOrCreateSalt(EXISTENT_USER);
-        final byte[] salt2 = server.getOrCreateSalt(EXISTENT_USER);
+        final byte[] salt1 = server.getOrFakeSalt(EXISTENT_USER);
+        final byte[] salt2 = server.getOrFakeSalt(EXISTENT_USER);
 
         // Verify result
         assertArrayEquals(salt1, salt2, "Salt for real user should be consistent");
