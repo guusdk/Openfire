@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2008 Jive Software, 2017-2024 Ignite Realtime Foundation. All rights reserved.
+ * Copyright (C) 2005-2008 Jive Software, 2017-2026 Ignite Realtime Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1258,25 +1258,37 @@ public class SessionManager extends BasicModule implements ClusterEventListener
             session = getSession(fullJID);
         }
 
-        // Remove route to the removed session (anonymous or not)
-        boolean removed = routingTable.removeClientRoute(fullJID);
+        // OF-3318: Only the session that currently OWNS the route may remove it, emit the server-side unavailable, or
+        // clear the session-info cache (two LocalClientSession instances can briefly exist for the same full JID - for
+        // example after a reconnect. Only one owns the route). A stale teardown must not tear down the live session's
+        // route or mark it offline.
+        // Ownership is captured before removal (the route still exists at this point). Bookkeeping (session_destroyed
+        // dispatch) is still performed for stale sessions below, so they are not leaked.
+        final boolean ownsRoute = (session == routingTable.getClientRoute(fullJID));
+
+        // Remove route to the removed session (anonymous or not), but only when this session owns it.
+        boolean removed = ownsRoute && routingTable.removeClientRoute(fullJID);
 
         if (removed) {
             // Fire session event.
-            if (anonymous) {
-                SessionEventDispatcher
-                        .dispatchEvent(session, SessionEventDispatcher.EventType.anonymous_session_destroyed);
-            }
-            else {
-                SessionEventDispatcher.dispatchEvent(session, SessionEventDispatcher.EventType.session_destroyed);
-
-            }
+            SessionEventDispatcher.dispatchEvent(session,
+                anonymous ? SessionEventDispatcher.EventType.anonymous_session_destroyed : SessionEventDispatcher.EventType.session_destroyed
+            );
+        } else if (!ownsRoute) {
+            // OF-3318: A stale/replaced session that does not own the route is being torn down. It will not remove a
+            // route, but listeners must still be notified, so the session instance is not leaked. (The route owner,
+            // the live session, will fire its own session_destroyed when it is eventually removed.)
+            SessionEventDispatcher.dispatchEvent(session,
+                anonymous ? SessionEventDispatcher.EventType.anonymous_session_destroyed : SessionEventDispatcher.EventType.session_destroyed
+            );
         }
 
         // Remove the session from the pre-Authenticated sessions list (if present)
         boolean preauth_removed = session instanceof LocalClientSession && localSessionManager.removePreAuthenticatedSession((LocalClientSession) session);
-        // If the user is still available then send an unavailable presence
-        if (forceUnavailable || session.getPresence().isAvailable()) {
+
+        // If the user is still available then send an unavailable presence. OF-3318: suppressed for a session that
+        // does not own the route, as routing it would mark the live session (the route owner) offline.
+        if (forceUnavailable || (ownsRoute && session.getPresence().isAvailable())) {
             Presence offline = new Presence();
             offline.setFrom(fullJID);
             offline.setTo(new JID(null, serverName, null, true));
@@ -1286,7 +1298,9 @@ public class SessionManager extends BasicModule implements ClusterEventListener
 
         // Stop tracking information about the session and share it with other cluster nodes.
         // Note that, unlike other caches, this cache is populated only when clustering is enabled.
-        sessionInfoCache.remove(fullJID.toString());
+        if (ownsRoute) { // OF-3318: only clear when this session owns the route, otherwise the live session's cached info is evicted.
+            sessionInfoCache.remove(fullJID.toString());
+        }
 
         if (removed || preauth_removed) {
             // Decrement the counter of user sessions
@@ -1352,11 +1366,13 @@ public class SessionManager extends BasicModule implements ClusterEventListener
                     Log.debug("Closing session with address {} and streamID {} does not have SM enabled.", session.getAddress(), session.getStreamID());
                 }
                 try {
-                    if ((session.getPresence().isAvailable() || !session.wasAvailable()) &&
-                            routingTable.hasClientRoute(session.getAddress())) {
-                        // Send an unavailable presence to the user's subscribers
-                        // Note: This gives us a chance to send an unavailable presence to the
-                        // entities that the user sent directed presences
+                    // OF-3318: Only emit unavailable when this closing session still owns the route (two LocalClientSession instances
+                    // can briefly exist for the same full JID - for example after a reconnect. Only one owns the route). Verifying
+                    // ownership (as terminateDetached() does for OF-1923) prevents sending unavailable presence for a live session
+                    // when a stale session closes.
+                    if ((session.getPresence().isAvailable() || !session.wasAvailable()) && session == routingTable.getClientRoute(session.getAddress())) {
+                        // Send an unavailable presence to the user's subscribers. This gives us a chance to send an
+                        // unavailable presence to the entities that the user sent directed presences
                         Presence presence = new Presence();
                         presence.setType(Presence.Type.unavailable);
                         presence.setFrom(session.getAddress());
