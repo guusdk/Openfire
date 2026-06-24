@@ -278,10 +278,8 @@ public class SessionManager extends BasicModule implements ClusterEventListener
         }
         final LocalClientSession clientSession = (LocalClientSession)session;
 
-        // OF-1923: Only close the session if it has not been replaced by another session (if the session
-        // has been replaced, then the condition below will compare to distinct instances). This *should* not
-        // occur (but has been observed, prior to the fix of OF-1923). This check is left in as a safeguard.
-        if (session == routingTable.getClientRoute(session.getAddress())) {
+        // OF-1923 / OF-3318: Only close the session if it has not been replaced by another session for the same full JID.
+        if (isRouteOwner(clientSession)) {
             try {
                 if ((clientSession.getPresence().isAvailable() || !clientSession.wasAvailable()) &&
                     routingTable.hasClientRoute(session.getAddress())) {
@@ -300,6 +298,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
                 removeSession(clientSession);
             }
         } else {
+            // This could be the start of data state inconsistency. See OF-3044.
             Log.warn("Not removing detached session '{}' ({}) that appears to have been replaced by another session.", session.getAddress(), session.getStreamID());
         }
     }
@@ -1220,6 +1219,26 @@ public class SessionManager extends BasicModule implements ClusterEventListener
     }
 
     /**
+     * Determines whether the supplied session currently owns the client route for its own address.
+     *
+     * @param session the session being evaluated (may be null).
+     * @return true if the session currently owns the route for its own address.
+     * @see <a href="https://igniterealtime.atlassian.net/browse/OF-3318">OF-3318: SessionManager teardown ownership</a>
+     */
+    private boolean isRouteOwner(final ClientSession session)
+    {
+        if (session == null) {
+            return false;
+        }
+        final ClientSession current = routingTable.getClientRoute(session.getAddress());
+
+        // Ownership is verified by comparing StreamID, replacing an earlier implementation that depended on object
+        // identity. Object identity would in fact be correct (as paths that use it are local-first even in a cluster,
+        // so it returns the very same local instance). The StreamID comparison is defensive hardening.
+        return current != null && session.getStreamID().equals(current.getStreamID());
+    }
+
+    /**
      * Removes a session.
      *
      * @param session the session.
@@ -1264,7 +1283,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
         // route or mark it offline.
         // Ownership is captured before removal (the route still exists at this point). Bookkeeping (session_destroyed
         // dispatch) is still performed for stale sessions below, so they are not leaked.
-        final boolean ownsRoute = (session == routingTable.getClientRoute(fullJID));
+        final boolean ownsRoute = isRouteOwner(session);
 
         // Remove route to the removed session (anonymous or not), but only when this session owns it.
         boolean removed = ownsRoute && routingTable.removeClientRoute(fullJID);
@@ -1370,7 +1389,7 @@ public class SessionManager extends BasicModule implements ClusterEventListener
                     // can briefly exist for the same full JID - for example after a reconnect. Only one owns the route). Verifying
                     // ownership (as terminateDetached() does for OF-1923) prevents sending unavailable presence for a live session
                     // when a stale session closes.
-                    if ((session.getPresence().isAvailable() || !session.wasAvailable()) && session == routingTable.getClientRoute(session.getAddress())) {
+                    if ((session.getPresence().isAvailable() || !session.wasAvailable()) && isRouteOwner(session)) {
                         // Send an unavailable presence to the user's subscribers. This gives us a chance to send an
                         // unavailable presence to the entities that the user sent directed presences
                         Presence presence = new Presence();
