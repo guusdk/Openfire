@@ -30,6 +30,11 @@ import java.util.Set;
  * <a href="http://www.extreme.indiana.edu/soap/xpp/">XML Pull Parser 3.x</a>.
  * It is very fast for use in SOAP style environments.</p>
  *
+ * <p>This class originates as a copy of dom4j's {@code org.dom4j.io.XPP3Reader}, adapted for XMPP. It diverges from the
+ * original in several ways, both to support XMPP's stanza-oriented streaming model and to apply stricter validation of
+ * the data that is received. The upstream {@code XPP3Reader} has remained unchanged across dom4j releases, so no
+ * upstream fixes are outstanding against this copy.</p>
+ *
  * @author <a href="mailto:pelle@neubia.com">Pelle Braendgaard</a>
  * @author <a href="mailto:jstrachan@apache.org">James Strachan</a>
  */
