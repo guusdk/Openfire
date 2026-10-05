@@ -17,6 +17,7 @@
 package org.dom4j.io;
 
 import org.dom4j.Document;
+import org.dom4j.DocumentException;
 import org.dom4j.Namespace;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -384,6 +385,22 @@ public class XMPPPacketReaderTest
         // Verify result.
         assertEquals( "a & b", result.getRootElement().element( "body" ).getText(),
             "Expected the content of the entity reference to be retained in the body, but it was not." );
+    }
+
+    /**
+     * Verifies that an entity reference that cannot be resolved (anything other than the five entities predefined in
+     * XML, which would require a document type definition that is not permitted in XMPP) is rejected with a
+     * {@link DocumentException} rather than an unchecked exception.
+     */
+    @Test
+    public void testRejectUnresolvableEntityReference()
+    {
+        // Setup test fixture.
+        final String input = "<message><body>x &unresolvable; y</body></message>";
+
+        // Execute system under test & verify result.
+        assertThrows( DocumentException.class, () -> packetReader.read( new StringReader( input ) ),
+            "Expected a stanza with an unresolvable entity reference to be rejected with a DocumentException, but it was not." );
     }
 
     /**

@@ -410,6 +410,12 @@ public class XMPPPacketReader {
                 }
                 case XmlPullParser.ENTITY_REF: {
                     String text = pp.getText();
+                    if (text == null) {
+                        // The parser could not resolve the entity reference to a replacement text. This occurs for
+                        // entity references other than the five that are predefined in XML (which require a document
+                        // type definition to be declared). These are not permitted in XMPP, so the stanza is rejected.
+                        throw new DocumentException("Cannot resolve the entity reference: " + pp.getName());
+                    }
                     if (parent != null) {
                         parent.addText(text);
                     }
