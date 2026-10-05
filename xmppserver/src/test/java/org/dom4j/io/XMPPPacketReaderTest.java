@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package dom.io;
+package org.dom4j.io;
 
 import org.dom4j.Document;
 import org.dom4j.Namespace;
-import org.dom4j.io.XMPPPacketReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xmlpull.v1.XmlPullParser;
